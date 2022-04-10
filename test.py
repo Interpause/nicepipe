@@ -7,14 +7,19 @@ mp_drawing_styles = mp.solutions.drawing_styles
 mp_pose = mp.solutions.pose
 
 
-@profile
+# @profile
 def main():
     # For webcam input:
     cap = cv2.VideoCapture(1)
     with mp_pose.Pose(
+            static_image_mode=False,
+            model_complexity=0,  # 0, 1 or 2 (0 or 1 is okay)
+            smooth_landmarks=True,
+            enable_segmentation=True,
+            smooth_segmentation=True,
             min_detection_confidence=0.5,
             min_tracking_confidence=0.5) as pose:
-        t = tqdm()
+        pbar = tqdm()
         print(f"w={cap.get(cv2.CAP_PROP_FRAME_WIDTH)}, h={cap.get(cv2.CAP_PROP_FRAME_HEIGHT)}, fps={cap.get(cv2.CAP_PROP_FPS)}")
         while cap.isOpened():
             success, image = cap.read()
@@ -29,6 +34,28 @@ def main():
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             results = pose.process(image)
 
+            # TODO extract some type hinting out...
+            # landmarks are normalized to [0,1]
+            if landmarks := results.pose_landmarks:
+                # mediapipe attempts to predict pose even outside of image 0_0
+                # either can check if it exceeds image bounds or visibility
+                ley = landmarks.landmark[mp_pose.PoseLandmark.LEFT_ELBOW].y
+                lwy = landmarks.landmark[mp_pose.PoseLandmark.LEFT_WRIST].y
+                if 0 < ley < 1 and 0 < lwy < 1:
+                    dy = landmarks.landmark[mp_pose.PoseLandmark.LEFT_ELBOW].y - \
+                        landmarks.landmark[mp_pose.PoseLandmark.LEFT_WRIST].y
+
+                    if(abs(dy) < 0.2):
+                        pbar.set_description(
+                            f'arm up, left_elbow: {landmarks.landmark[mp_pose.PoseLandmark.LEFT_ELBOW].y}, left_wrist: {landmarks.landmark[mp_pose.PoseLandmark.LEFT_WRIST].y}')
+                    else:
+                        pbar.set_description(
+                            f'arm down, left_elbow: {landmarks.landmark[mp_pose.PoseLandmark.LEFT_ELBOW].y}, left_wrist: {landmarks.landmark[mp_pose.PoseLandmark.LEFT_WRIST].y}')
+                else:
+                    pbar.set_description('arm out of bounds')
+            else:
+                pbar.set_description('no human')
+
             # Draw the pose annotation on the image.
             image.flags.writeable = True
             image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
@@ -41,7 +68,7 @@ def main():
             cv2.imshow('MediaPipe Pose', cv2.flip(image, 1))
             if cv2.waitKey(1) & 0xFF == 27:
                 break
-            t.update()
+            pbar.update()
     cap.release()
 
 
