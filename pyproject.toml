@@ -13,7 +13,14 @@ numpy = "^1.22.3"
 opencv-contrib-python = "^4.5.5"
 tqdm = "^4.64.0"
 
-[tool.poetry.dev-dependencies]
+[tool.poe.tasks]
+## PyTorch with CUDA 11.1. If PyTorch is imported first, importing Tensorflow will detect CUDA + cuDNN bundled with PyTorch
+## Run with the command "poe post-update"
+## See https://github.com/python-poetry/poetry/issues/2543
+post-update = "pip install torch torchvision -f https://download.pytorch.org/whl/torch_stable.html"
+
+[tool.poetry.group.dev.dependencies]
+poethepoet = "^0.13.1"
 autopep8 = "^1.6.0"
 line-profiler = "^3.5.1"
 
