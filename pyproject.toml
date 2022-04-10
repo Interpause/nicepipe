@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "mediapiping"
+version = "0.1.0"
+description = "insert description"
+license = "Proprietary"
+authors = ["John-Henry Lim <42513874+Interpause@users.noreply.github.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.8,<3.10"
+mediapipe = "^0.8.9"
+numpy = "^1.22.3"
+opencv-contrib-python = "^4.5.5"
+tqdm = "^4.64.0"
+
+[tool.poetry.dev-dependencies]
+autopep8 = "^1.6.0"
+line-profiler = "^3.5.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
