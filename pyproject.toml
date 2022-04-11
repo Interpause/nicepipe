@@ -17,7 +17,7 @@ tqdm = "^4.64.0"
 ## PyTorch with CUDA 11.1. If PyTorch is imported first, importing Tensorflow will detect CUDA + cuDNN bundled with PyTorch
 ## Run with the command "poe post-update"
 ## See https://github.com/python-poetry/poetry/issues/2543
-post-update = "pip install torch torchvision -f https://download.pytorch.org/whl/torch_stable.html"
+post-update = "pip install torch==1.11.0+cu115 torchvision==0.12.0+cu115 -f https://download.pytorch.org/whl/torch_stable.html"
 
 [tool.poetry.group.dev.dependencies]
 poethepoet = "^0.13.1"
