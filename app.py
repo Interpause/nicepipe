@@ -7,16 +7,24 @@ import mediapipe.python.solutions.drawing_styles as mp_drawing_styles
 import mediapipe.python.solutions.pose as mp_pose
 #import mediapipe.framework.formats.landmark_pb2
 
-from mediapiping import Worker
+from mediapiping import Worker, rlloop
 
-# TODO: is the websocket part of or external of Worker?
+# https://google.github.io/mediapipe/solutions/pose.html#cross-platform-configuration-options
+mp_cfg = dict(
+    static_image_mode=False,
+    model_complexity=2,  # 0, 1 or 2 (0 or 1 is okay)
+    smooth_landmarks=True,
+    enable_segmentation=True,
+    smooth_segmentation=True,
+    min_detection_confidence=0.5,
+    min_tracking_confidence=0.5
+)
 
 
 async def main():
-    async with Worker() as worker:
+    async with Worker(source=0, mp_pose_cfg=mp_cfg, max_fps=30) as worker:
         pbar = tqdm()
-        for results, img in worker.next():
-            await asyncio.sleep(0.016)
+        async for results, img in rlloop(360, iter=worker.next(), update_func=pbar.update):
             if results is None:
                 continue
 
@@ -54,7 +62,6 @@ async def main():
             cv2.imshow('MediaPipe Pose', cv2.flip(img, 1))
             if cv2.waitKey(1) & 0xFF == 27:
                 break
-            pbar.update()
 
 
 if __name__ == '__main__':

@@ -8,5 +8,6 @@ Mediapiping is a temporary name ffs.
 '''
 
 from .worker import *
+from .utils import *
 
 __version__ = '0.1.0'

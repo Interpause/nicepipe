@@ -8,7 +8,9 @@ import websockets
 # import google.protobuf.json_format as pb_json
 
 import mediapiping.mp_pose_process as mp_pose_process
+from mediapiping.utils import rlloop
 from tqdm import tqdm
+import time
 
 
 from logging import Logger
@@ -35,15 +37,18 @@ class Worker:
     mp_pose_cfg: dict = field(
         default_factory=lambda: deepcopy(DEFAULT_MP_POSE_CFG))
     '''kwargs to configure mediapipe Pose'''
+    max_fps: int = 30
 
     def __post_init__(self):
         self.prev_results = None
+        self.prev_img = None
         self.pbar = tqdm(position=2)
-        self.pbar.set_description('send loop')
+        self.pbar.set_description('worker loop')
         '''debounce async prediction tasks'''
 
     def _recv(self):
         # TODO: use pyAV instead of cv2. support webRTC.
+        # self.cap.read() should be async to allow other things to run...
         while self.cap.isOpened():
             success, img = self.cap.read()
             if not success:
@@ -69,35 +74,37 @@ class Worker:
         pass
 
     async def _predict(self, img):
-        # TODO: use multiple models & combine results
+        # TODO: execute multiple models concurrently & combine results
         results = await self._mp_predict(img)
-        # prediction process will return None when still debouncing
-        if not results is None:
-            self.prev_results = results
         return results
 
+    async def _loop(self):
+        async def set_prediction(img):
+            results = await self._predict(img)
+            # prediction process will return None when still debouncing
+            if not results is None:
+                self.prev_results = results
 
-# '''
-# open() should start image recv, predict & send loop in background
-# replace next() with function that gets current image & prediction
-# and also gives an id that can be used to check if it has changed
-# since the last time it was called
-# '''
+        async for img in rlloop(self.max_fps, iter=self._recv(), update_func=self.pbar.update):
+            self.prev_img = img
+            # bottleneck is opencv image yield rate lmao
+            # print(img)
+            asyncio.create_task(set_prediction(img))
+            self._send()
 
     def next(self):
-        for img in self._recv():
-            # async effects dont show for CPU models
-            # bottleneck is opencv image yield rate lmao
-            asyncio.create_task(self._predict(img))
-            yield self.prev_results, img
+        while True:
+            yield self.prev_results, self.prev_img
 
     async def open(self):
         self.cap = cv2.VideoCapture(self.source)
         self.mp_proc, self._mp_predict = mp_pose_process.start(
             self.mp_pose_cfg)
         self.wss = await websockets.serve(self._handle_wss, 'localhost', 8080)
+        self.loop_task = asyncio.create_task(self._loop())
 
     async def close(self):
+        self.loop_task.cancel()
         self.cap.release()
         self.wss.close()
         self.mp_proc.terminate()

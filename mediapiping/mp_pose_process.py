@@ -9,6 +9,9 @@ import mediapipe.framework.formats.landmark_pb2 as landmark_pb2
 from tqdm import tqdm
 # import time
 
+# TODO: Abstractify this into:
+# Serializer func, Deserializer func, Initialization func & inference function (including preprocessing)
+
 
 def serialize_mp_results(results: NamedTuple):
     return {k: v.SerializeToString() for k, v in vars(results).items() if hasattr(v, 'SerializeToString')}
@@ -26,15 +29,15 @@ def deserialize_mp_results(results: dict):
 
 def childtask(pipe: Connection, mpp: MpPose):
     pbar = tqdm(position=1)
-    pbar.set_description('Mp Process Loop')
+    pbar.set_description('mp proc loop')
     while True:
+        pbar.update()
         img = pipe.recv()
         # print('child recv: ', time.time_ns())
         results = mpp.process(img)
         serialized = serialize_mp_results(results)
         # print('child send: ', time.time_ns())
         pipe.send(serialized)
-        pbar.update()
 
 
 def childproc(pipe: Connection, cfg: dict):
