@@ -13,14 +13,17 @@ from mediapiping import Worker
 
 
 async def main():
-    with Worker() as worker:
+    async with Worker() as worker:
         pbar = tqdm()
         for results, img in worker.next():
+            await asyncio.sleep(0.016)
+            if results is None:
+                continue
+
             # landmarks are normalized to [0,1]
             if landmarks := results.pose_landmarks:
                 # mediapipe attempts to predict pose even outside of image 0_0
                 # either can check if it exceeds image bounds or visibility
-                # print(landmarks.SerializeToString())
 
                 ley = landmarks.landmark[mp_pose.PoseLandmark.LEFT_ELBOW].y
                 lwy = landmarks.landmark[mp_pose.PoseLandmark.LEFT_WRIST].y

@@ -8,10 +8,13 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">=3.8,<3.10"
-mediapipe = "^0.8.9"
 numpy = "^1.22.3"
 opencv-contrib-python = "^4.5.5"
 tqdm = "^4.64.0"
+websockets = "^10.2"
+protobuf = "^3.20.0"
+mediapipe = "^0.8.9.1"
+aioprocessing = "^2.0.0"
 
 [tool.poe.tasks]
 ## PyTorch with CUDA 11.1. If PyTorch is imported first, importing Tensorflow will detect CUDA + cuDNN bundled with PyTorch
