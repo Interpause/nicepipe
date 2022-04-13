@@ -28,7 +28,7 @@ def deserialize_mp_results(results: dict):
 
 
 def childtask(pipe: Connection, mpp: MpPose):
-    pbar = tqdm(position=1)
+    pbar = tqdm(position=3)
     pbar.set_description('mp proc loop')
     while True:
         pbar.update()

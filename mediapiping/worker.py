@@ -5,7 +5,7 @@ from copy import deepcopy
 import cv2
 import base64
 import asyncio
-# import google.protobuf.json_format as pb_json
+import google.protobuf.json_format as pb_json
 
 import mediapiping.mp_pose_process as mp_pose_process
 from mediapiping.utils import rlloop
@@ -61,11 +61,6 @@ class Worker:
             yield img
 
     def _send(self):
-        # either protobuf format:
-        #   landmarks.SerializeToString()
-        # or json format:
-        #   pb_json.MessageToJson(landmarks)
-        # i think ill treat it as a blackbox & use protobuf format
         # TODO: fyi send webp over wss <<< send video chunks over anything
         # and wss << webrtc
         # encoding the image like this has a performance hit
@@ -76,12 +71,21 @@ class Worker:
 
         success, buf = cv2.imencode('.jpg', self.cur_img)
         if not success:
-            raise 'oh no'
-        enc = base64.b64encode(buf).decode('ascii')
+            raise 'image encode failed'
+
+        img = base64.b64encode(buf).decode('ascii')
+        pose = pb_json.MessageToDict(self.cur_data.pose_landmarks)[
+            'landmark'] if not self.cur_data is None else None
+
+        # below checks if too many frames are being skipped
+        # if hasattr(self, 'ptest'):
+        #     if(self.ptest == pose):
+        #         print('prediction reused')
+        # self.ptest = pose
 
         asyncio.create_task(self.wss.broadcast('frame', {
-            'img': enc,
-            'pose_pb': self.cur_data.pose_landmarks.SerializeToString() if not self.cur_data is None else None
+            'img': img,
+            'pose': pose
         }))
 
     async def _predict(self, img):

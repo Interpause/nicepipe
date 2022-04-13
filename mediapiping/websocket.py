@@ -5,6 +5,9 @@ import websockets
 import asyncio
 import json
 
+from logging import Logger
+log = Logger(__name__)
+
 
 @dataclass
 class WebsocketServer:
@@ -15,9 +18,15 @@ class WebsocketServer:
     def __post_init__(self):
         self.clients = set()
 
+    async def _heartbeat(self, ws):
+        while ws.open:
+            await self.send_client(ws, 'pong', None)
+            await asyncio.sleep(1)
+
     async def _register_client(self, ws):
         self.clients.add(ws)
         try:
+            asyncio.create_task(self._heartbeat(ws))
             # infinite client msg generator... I can rate-limit this lmao
             async for msg in ws:
                 try:
@@ -40,14 +49,13 @@ class WebsocketServer:
             pass
 
     async def broadcast(self, event, obj):
-        await asyncio.gather(*[self._send_client(ws, event, obj) for ws in self.clients])
+        await asyncio.gather(*[self.send_client(ws, event, obj) for ws in self.clients])
 
     async def open(self):
         self.wss = await websockets.serve(
             ws_handler=self._register_client,
             host=self.host,
-            port=self.port,
-            origins=[None]
+            port=self.port
         )
         await self.wss.start_serving()
 

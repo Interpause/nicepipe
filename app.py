@@ -13,7 +13,7 @@ from mediapiping import Worker, rlloop
 # https://google.github.io/mediapipe/solutions/pose.html#cross-platform-configuration-options
 mp_cfg = dict(
     static_image_mode=False,
-    model_complexity=2,  # 0, 1 or 2 (0 or 1 is okay)
+    model_complexity=0,  # 0, 1 or 2 (0 or 1 is okay)
     smooth_landmarks=True,
     enable_segmentation=True,
     smooth_segmentation=True,
@@ -23,9 +23,9 @@ mp_cfg = dict(
 
 
 async def main():
-    async with Worker(source=0, mp_pose_cfg=mp_cfg, max_fps=30) as worker:
-        pbar = tqdm()
-        async for results, img in rlloop(240, iter=worker.next(), update_func=pbar.update):
+    async with Worker(source=0, mp_pose_cfg=mp_cfg, max_fps=32) as worker:
+        pbar = tqdm(position=1)
+        async for results, img in rlloop(32, iter=worker.next(), update_func=pbar.update):
             if results is None:
                 continue
 
