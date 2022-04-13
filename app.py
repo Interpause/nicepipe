@@ -1,5 +1,6 @@
 import cv2
 import asyncio
+import uvloop
 from tqdm import tqdm
 import mediapipe as mp
 import mediapipe.python.solutions.drawing_utils as mp_drawing
@@ -24,7 +25,7 @@ mp_cfg = dict(
 async def main():
     async with Worker(source=0, mp_pose_cfg=mp_cfg, max_fps=30) as worker:
         pbar = tqdm()
-        async for results, img in rlloop(360, iter=worker.next(), update_func=pbar.update):
+        async for results, img in rlloop(240, iter=worker.next(), update_func=pbar.update):
             if results is None:
                 continue
 
@@ -52,7 +53,6 @@ async def main():
 
             # Draw the pose annotation on the image.
             img.flags.writeable = True
-            img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
             mp_drawing.draw_landmarks(
                 img,
                 results.pose_landmarks,
@@ -65,4 +65,5 @@ async def main():
 
 
 if __name__ == '__main__':
+    uvloop.install()
     asyncio.run(main())

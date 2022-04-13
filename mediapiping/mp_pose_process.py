@@ -33,6 +33,7 @@ def childtask(pipe: Connection, mpp: MpPose):
     while True:
         pbar.update()
         img = pipe.recv()
+        img = img[..., ::-1]  # BGR to RGB
         # print('child recv: ', time.time_ns())
         results = mpp.process(img)
         serialized = serialize_mp_results(results)
@@ -54,7 +55,7 @@ def start(cfg: dict):
     is_busy = False
 
     async def predict(img: np.ndarray):
-        '''send an RGB image to the child process for prediction. Returns None when debouncing.'''
+        '''send an BGR image to the child process for prediction. Returns None when debouncing.'''
         nonlocal is_busy
         if is_busy:
             return None

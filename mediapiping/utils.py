@@ -8,14 +8,14 @@ async def rlloop(rate, iter=None, update_func=lambda: 0):
 
     if iter is None:
         while True:
-            yield
-            update_func()
             await asyncio.sleep(max(1e-3, 1./rate + t - time.perf_counter()))
             t = time.perf_counter()
+            update_func()
+            yield
 
     else:
         for i in iter:
-            yield i
-            update_func()
             await asyncio.sleep(max(1e-3, 1./rate + t - time.perf_counter()))
             t = time.perf_counter()
+            update_func()
+            yield i
