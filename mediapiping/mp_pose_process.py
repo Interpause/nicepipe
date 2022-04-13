@@ -14,7 +14,11 @@ from tqdm import tqdm
 
 
 def serialize_mp_results(results: NamedTuple):
-    return {k: v.SerializeToString() for k, v in vars(results).items() if hasattr(v, 'SerializeToString')}
+    # {k: v.SerializeToString() for k, v in vars(results).items() if hasattr(v, 'SerializeToString')}
+    if hasattr(results, 'pose_landmarks'):
+        return {'pose_landmarks': results.pose_landmarks.SerializeToString()}
+    else:
+        return {}
 
 
 def deserialize_mp_results(results: dict):
