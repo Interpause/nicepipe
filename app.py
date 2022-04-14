@@ -1,6 +1,5 @@
 import cv2
 import asyncio
-import uvloop
 from tqdm import tqdm
 import mediapipe as mp
 import mediapipe.python.solutions.drawing_utils as mp_drawing
@@ -71,5 +70,9 @@ async def main():
 
 
 if __name__ == '__main__':
-    uvloop.install()
+    try:
+        import uvloop  # type: ignore
+        uvloop.install()
+    except ModuleNotFoundError:
+        pass
     asyncio.run(main())
