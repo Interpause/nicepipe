@@ -22,10 +22,13 @@ mp_cfg = dict(
 
 LOCAL_TEST = False
 
+# NOTE: IF RUNNING ON WINDOWS, DISABLE GAME MODE!!! ELSE LAG WHEN SERVER IS NOT FOREGROUND
+
 
 async def main():
     # TODO: fix debounce. if worker FPS too high, it will hit the debounce, causing 1x wasted request & having prediction FPS
-    async with Worker(source=0, mp_pose_cfg=mp_cfg, max_fps=30) as worker:
+    # probably have to use queue or smth. Look into process pool executor for way to work around this
+    async with Worker(source=1, mp_pose_cfg=mp_cfg, max_fps=30) as worker:
         if not LOCAL_TEST:
             await asyncio.Future()
         else:

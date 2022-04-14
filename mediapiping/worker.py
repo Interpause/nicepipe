@@ -88,14 +88,20 @@ class Worker:
             'pose': pose
         }))
 
-    async def _predict(self, img):
+    async def _predict(self, img, wait=False, cancel=False):
         # TODO: execute multiple models concurrently & combine results
+        # some method to check a model is busy or not. bad idea if all models are supposed to run desynced from each other
+        while wait and self._mp_predict.is_busy:
+            if cancel and not self.cur_img is img:
+                return None
+            await asyncio.sleep(0)
+
         results = await self._mp_predict(img)
         return results
 
     async def _loop(self):
         async def set_prediction(img):
-            results = await self._predict(img)
+            results = await self._predict(img, wait=True, cancel=True)
             # prediction process will return None when still debouncing
             if not results is None:
                 self.cur_data = results

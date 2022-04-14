@@ -1,4 +1,5 @@
 from __future__ import annotations
+from dataclasses import dataclass
 from typing import NamedTuple
 from types import SimpleNamespace
 
@@ -50,27 +51,30 @@ def childproc(pipe: Connection, cfg: dict):
     childtask(pipe, mpp)
 
 
+@dataclass
+class Predictor:
+    pipe: Connection
+    is_busy = False
+
+    async def __call__(self, img: np.ndarray):
+        '''send an BGR image to the child process for prediction. Returns None when debouncing.'''
+        if self.is_busy:
+            return None
+        self.is_busy = True
+        # print('parent send: ', time.time_ns())
+        await self.pipe.coro_send(img)
+        self.is_busy = False
+        # tested: no broken pipe if clear debounce before recv is done
+        reply = await self.pipe.coro_recv()
+
+        # print('parent recv: ', time.time_ns())
+        return deserialize_mp_results(reply)
+
+
 def start(cfg: dict):
     parent_pipe, child_pipe = Pipe()
 
     proc = Process(target=childproc, args=(child_pipe, cfg), daemon=True)
     proc.start()
 
-    is_busy = False
-
-    async def predict(img: np.ndarray):
-        '''send an BGR image to the child process for prediction. Returns None when debouncing.'''
-        nonlocal is_busy
-        if is_busy:
-            return None
-        is_busy = True
-        # print('parent send: ', time.time_ns())
-        await parent_pipe.coro_send(img)
-        is_busy = False
-        # tested: no broken pipe if clear debounce before recv is done
-        reply = await parent_pipe.coro_recv()
-
-        # print('parent recv: ', time.time_ns())
-        return deserialize_mp_results(reply)
-
-    return proc, predict
+    return proc, Predictor(parent_pipe)
