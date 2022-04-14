@@ -15,7 +15,7 @@ from tqdm import tqdm
 
 def serialize_mp_results(results: NamedTuple):
     # {k: v.SerializeToString() for k, v in vars(results).items() if hasattr(v, 'SerializeToString')}
-    if hasattr(results, 'pose_landmarks'):
+    if not results.pose_landmarks is None:
         return {'pose_landmarks': results.pose_landmarks.SerializeToString()}
     else:
         return {}
