@@ -73,9 +73,12 @@ async def main():
 
 
 if __name__ == '__main__':
+    # uvloop only available on unix platform
     try:
         import uvloop  # type: ignore
         uvloop.install()
+    # means we on windows
     except ModuleNotFoundError:
-        pass
+        from multiprocessing import freeze_support
+        freeze_support()  # needed on windows for multiprocessing
     asyncio.run(main())
