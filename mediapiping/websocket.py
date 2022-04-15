@@ -5,8 +5,8 @@ import websockets
 import asyncio
 import json
 
-from logging import Logger
-log = Logger(__name__)
+from logging import getLogger
+log = getLogger(__name__)
 
 
 @dataclass

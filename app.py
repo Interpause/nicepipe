@@ -1,18 +1,21 @@
+import logging
+from rich.logging import RichHandler
+
 import cv2
 import asyncio
-from tqdm import tqdm
 import mediapipe as mp
 import mediapipe.python.solutions.drawing_utils as mp_drawing
 import mediapipe.python.solutions.drawing_styles as mp_drawing_styles
 import mediapipe.python.solutions.pose as mp_pose
 #import mediapipe.framework.formats.landmark_pb2
 
-from mediapiping import Worker, rlloop
+from mediapiping import Worker, rlloop, rate_bar
+
 
 # https://google.github.io/mediapipe/solutions/pose.html#cross-platform-configuration-options
 mp_cfg = dict(
     static_image_mode=False,
-    model_complexity=1,  # 0, 1 or 2 (0 or 1 is okay)
+    model_complexity=0,  # 0, 1 or 2 (0 or 1 is okay)
     smooth_landmarks=True,
     enable_segmentation=True,
     smooth_segmentation=True,
@@ -20,7 +23,7 @@ mp_cfg = dict(
     min_tracking_confidence=0.5
 )
 
-LOCAL_TEST = False
+LOCAL_TEST = True
 
 # NOTE: IF RUNNING ON WINDOWS, DISABLE GAME MODE!!! ELSE LAG WHEN SERVER IS NOT FOREGROUND
 
@@ -32,8 +35,9 @@ async def main():
         if not LOCAL_TEST:
             await asyncio.Future()
         else:
-            pbar = tqdm(position=1)
-            async for results, img in rlloop(32, iter=worker.next(), update_func=pbar.update):
+            main_loop = rate_bar.add_task("main loop", total=float('inf'))
+
+            async for results, img in rlloop(60, iter=worker.next(), update_func=lambda: rate_bar.update(main_loop, advance=1)):
                 if results is None:
                     continue
 
@@ -49,15 +53,18 @@ async def main():
                             landmarks.landmark[mp_pose.PoseLandmark.LEFT_WRIST].y
 
                         if(abs(dy) < 0.2):
-                            pbar.set_description(
-                                f'arm up, left_elbow: {landmarks.landmark[mp_pose.PoseLandmark.LEFT_ELBOW].y}, left_wrist: {landmarks.landmark[mp_pose.PoseLandmark.LEFT_WRIST].y}')
+                            rate_bar.update(
+                                main_loop, description=f'arm up, left_elbow: {landmarks.landmark[mp_pose.PoseLandmark.LEFT_ELBOW].y}, left_wrist: {landmarks.landmark[mp_pose.PoseLandmark.LEFT_WRIST].y}')
+
                         else:
-                            pbar.set_description(
-                                f'arm down, left_elbow: {landmarks.landmark[mp_pose.PoseLandmark.LEFT_ELBOW].y}, left_wrist: {landmarks.landmark[mp_pose.PoseLandmark.LEFT_WRIST].y}')
+                            rate_bar.update(
+                                main_loop, description=f'arm down, left_elbow: {landmarks.landmark[mp_pose.PoseLandmark.LEFT_ELBOW].y}, left_wrist: {landmarks.landmark[mp_pose.PoseLandmark.LEFT_WRIST].y}')
                     else:
-                        pbar.set_description('arm out of bounds')
+                        rate_bar.update(
+                            main_loop, description='arm out of bounds')
                 else:
-                    pbar.set_description('no human')
+                    rate_bar.update(
+                        main_loop, description='no human')
 
                 # Draw the pose annotation on the image.
                 img.flags.writeable = True
@@ -81,4 +88,14 @@ if __name__ == '__main__':
     except ModuleNotFoundError:
         from multiprocessing import freeze_support
         freeze_support()  # needed on windows for multiprocessing
+
+    logging.basicConfig(
+        level="INFO",
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[RichHandler(rich_tracebacks=True)]
+    )
+
+    log = logging.getLogger("rich")
+    rate_bar.start()
     asyncio.run(main())

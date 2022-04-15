@@ -7,8 +7,6 @@ import numpy as np
 from aioprocessing import AioConnection as Connection, AioPipe as Pipe, AioProcess as Process
 from mediapipe.python.solutions.pose import Pose as MpPose
 import mediapipe.framework.formats.landmark_pb2 as landmark_pb2
-from tqdm import tqdm
-# import time
 
 # TODO: Abstractify this into:
 # Serializer func, Deserializer func, Initialization func & inference function (including preprocessing)
@@ -33,10 +31,7 @@ def deserialize_mp_results(results: dict):
 
 
 def childtask(pipe: Connection, mpp: MpPose):
-    pbar = tqdm(position=3)
-    pbar.set_description('mp proc loop')
     while True:
-        pbar.update()
         img = pipe.recv()
         img = img[..., ::-1]  # BGR to RGB
         # print('child recv: ', time.time_ns())

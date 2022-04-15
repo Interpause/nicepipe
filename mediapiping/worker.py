@@ -1,4 +1,5 @@
 from __future__ import annotations
+from logging import getLogger
 from dataclasses import dataclass, field
 from copy import deepcopy
 
@@ -8,13 +9,11 @@ import asyncio
 import google.protobuf.json_format as pb_json
 
 import mediapiping.mp_pose_process as mp_pose_process
-from mediapiping.utils import rlloop
+from mediapiping.utils import rlloop, rate_bar
 from mediapiping.websocket import WebsocketServer
-from tqdm import tqdm
+# from tqdm import tqdm
 
-
-from logging import Logger
-log = Logger(__name__)
+log = getLogger(__name__)
 
 # https://google.github.io/mediapipe/solutions/pose.html#cross-platform-configuration-options
 DEFAULT_MP_POSE_CFG = dict(
@@ -26,6 +25,9 @@ DEFAULT_MP_POSE_CFG = dict(
     min_detection_confidence=0.5,
     min_tracking_confidence=0.5
 )
+
+# TODO: split into 3 loops: receive, predict and send. asyncio means less boiler is needed than using threads
+# the predict loop ofc isnt doing the predicting, its just sending & waiting on each model inference process
 
 
 @dataclass
@@ -42,9 +44,9 @@ class Worker:
     def __post_init__(self):
         self.cur_data = None
         self.cur_img = None
-        self.pbar = tqdm(position=2)
+        self.pbar = [rate_bar.add_task("worker loop", total=float(
+            'inf')), rate_bar.add_task("predict loop", total=float('inf'))]
         self.wss = WebsocketServer()
-        self.pbar.set_description('worker loop')
 
     def _recv(self):
         # TODO: use pyAV instead of cv2. support webRTC.
@@ -105,8 +107,9 @@ class Worker:
             # prediction process will return None when still debouncing
             if not results is None:
                 self.cur_data = results
+                rate_bar.update(self.pbar[1], advance=1)
 
-        async for img in rlloop(self.max_fps, iter=self._recv(), update_func=self.pbar.update):
+        async for img in rlloop(self.max_fps, iter=self._recv(), update_func=lambda: rate_bar.update(self.pbar[0], advance=1)):
             self.cur_img = img
             # bottleneck is opencv image yield rate lmao
             asyncio.create_task(set_prediction(img))
