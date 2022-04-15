@@ -16,6 +16,7 @@ mediapipe = "^0.8.9.1"
 aioprocessing = "^2.0.0"
 uvloop = {version = "^0.16.0", platform = "linux"}
 rich = "^12.2.0"
+click = "^8.1.2"
 
 [tool.poe.tasks]
 ## PyTorch with CUDA 11.1. If PyTorch is imported first, importing Tensorflow will detect CUDA + cuDNN bundled with PyTorch

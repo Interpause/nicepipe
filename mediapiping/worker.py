@@ -9,7 +9,8 @@ import asyncio
 import google.protobuf.json_format as pb_json
 
 import mediapiping.mp_pose_process as mp_pose_process
-from mediapiping.utils import rlloop, rate_bar
+from mediapiping.utils import rlloop
+from mediapiping.rich import rate_bar
 from mediapiping.websocket import WebsocketServer
 # from tqdm import tqdm
 

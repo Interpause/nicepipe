@@ -1,5 +1,6 @@
+# NOTE: IF RUNNING ON WINDOWS, DISABLE GAME MODE!!! ELSE LAG WHEN SERVER IS NOT FOREGROUND
 import logging
-from rich.logging import RichHandler
+from rich import inspect
 
 import cv2
 import asyncio
@@ -7,9 +8,13 @@ import mediapipe as mp
 import mediapipe.python.solutions.drawing_utils as mp_drawing
 import mediapipe.python.solutions.drawing_styles as mp_drawing_styles
 import mediapipe.python.solutions.pose as mp_pose
-#import mediapipe.framework.formats.landmark_pb2
 
-from mediapiping import Worker, rlloop, rate_bar
+from mediapiping import Worker, rlloop
+from mediapiping.rich import enable_fancy_console, rate_bar, layout
+
+
+log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
 
 
 # https://google.github.io/mediapipe/solutions/pose.html#cross-platform-configuration-options
@@ -23,14 +28,12 @@ mp_cfg = dict(
     min_tracking_confidence=0.5
 )
 
+# enable/disable the local preview/test window
 LOCAL_TEST = True
-
-# NOTE: IF RUNNING ON WINDOWS, DISABLE GAME MODE!!! ELSE LAG WHEN SERVER IS NOT FOREGROUND
 
 
 async def main():
-    # TODO: fix debounce. if worker FPS too high, it will hit the debounce, causing 1x wasted request & having prediction FPS
-    # probably have to use queue or smth. Look into process pool executor for way to work around this
+    log.info(':smiley: hewwo world! :eggplant:', extra={"markup": True})
     async with Worker(source=1, mp_pose_cfg=mp_cfg, max_fps=30) as worker:
         if not LOCAL_TEST:
             await asyncio.Future()
@@ -53,20 +56,17 @@ async def main():
                             landmarks.landmark[mp_pose.PoseLandmark.LEFT_WRIST].y
 
                         if(abs(dy) < 0.2):
-                            rate_bar.update(
-                                main_loop, description=f'arm up, left_elbow: {landmarks.landmark[mp_pose.PoseLandmark.LEFT_ELBOW].y}, left_wrist: {landmarks.landmark[mp_pose.PoseLandmark.LEFT_WRIST].y}')
+                            layout['Info']['Misc'].update(
+                                f'arm up, left_elbow: {landmarks.landmark[mp_pose.PoseLandmark.LEFT_ELBOW].y}, left_wrist: {landmarks.landmark[mp_pose.PoseLandmark.LEFT_WRIST].y}')
 
                         else:
-                            rate_bar.update(
-                                main_loop, description=f'arm down, left_elbow: {landmarks.landmark[mp_pose.PoseLandmark.LEFT_ELBOW].y}, left_wrist: {landmarks.landmark[mp_pose.PoseLandmark.LEFT_WRIST].y}')
+                            layout['Info']['Misc'].update(
+                                f'arm down, left_elbow: {landmarks.landmark[mp_pose.PoseLandmark.LEFT_ELBOW].y}, left_wrist: {landmarks.landmark[mp_pose.PoseLandmark.LEFT_WRIST].y}')
                     else:
-                        rate_bar.update(
-                            main_loop, description='arm out of bounds')
+                        layout['Info']['Misc'].update('arm out of bounds')
                 else:
-                    rate_bar.update(
-                        main_loop, description='no human')
+                    layout['Info']['Misc'].update('no human')
 
-                # Draw the pose annotation on the image.
                 img.flags.writeable = True
                 mp_drawing.draw_landmarks(
                     img,
@@ -88,14 +88,5 @@ if __name__ == '__main__':
     except ModuleNotFoundError:
         from multiprocessing import freeze_support
         freeze_support()  # needed on windows for multiprocessing
-
-    logging.basicConfig(
-        level="INFO",
-        format="%(message)s",
-        datefmt="[%X]",
-        handlers=[RichHandler(rich_tracebacks=True)]
-    )
-
-    log = logging.getLogger("rich")
-    rate_bar.start()
-    asyncio.run(main())
+    with enable_fancy_console():
+        asyncio.run(main())
