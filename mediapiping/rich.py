@@ -28,7 +28,7 @@ console.height = 10
 
 layout = Layout()
 '''used for layout'''
-live = Live(layout, console=console, refresh_per_second=10, transient=False)
+live = Live(layout, console=console, refresh_per_second=10, transient=True)
 '''used for live display'''
 rate_bar = Progress(SpinnerColumn(), TimeElapsedColumn(), TaskSpeed(),
                     '{task.description}', speed_estimate_period=2, console=console)

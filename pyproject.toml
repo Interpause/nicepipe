@@ -15,6 +15,8 @@ protobuf = "^3.20.0"
 mediapipe = "^0.8.9.1"
 aioprocessing = "^2.0.0"
 uvloop = {version = "^0.16.0", platform = "linux"}
+pyinstaller = "^4.10"
+tensorflow = "^2.8.0"
 rich = "^12.2.0"
 click = "^8.1.2"
 
@@ -23,6 +25,7 @@ click = "^8.1.2"
 ## Run with the command "poe post-update"
 ## See https://github.com/python-poetry/poetry/issues/2543
 post-update = "pip install torch==1.11.0+cu115 torchvision==0.12.0+cu115 -f https://download.pytorch.org/whl/torch_stable.html"
+build-windows = "pyinstaller app.py -y --onefile -n nicepipe --collect-data mediapipe"
 
 [tool.poetry.group.dev.dependencies]
 poethepoet = "^0.13.1"
