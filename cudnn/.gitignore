@@ -1,0 +1,4 @@
+# https://developer.nvidia.com/rdp/cudnn-download
+# put bin, include & lib folders in this folder
+**/*
+!.gitignore

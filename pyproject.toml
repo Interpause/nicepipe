@@ -6,6 +6,16 @@ license = "Proprietary"
 authors = ["John-Henry Lim <42513874+Interpause@users.noreply.github.com>"]
 readme = "README.md"
 
+[tool.poe.tasks]
+# Below PyTorch wheels are bundled with CUDA and cuDNN. Importing pytorch first will allow Tensorflow to detect CUDA.
+# PyTorch is installed separately due to its a bug with how poetry resolves dependencies & scans indexes.
+# 1. instead of returning 404 for packages it doesn't have, PyTorch's index returns 403.
+# 2. Poetry doesn't know how to deal with +tags on the version.
+# See https://github.com/python-poetry/poetry/issues/2543
+install-torch = "pip install torch==1.11.0+cu115 torchvision==0.12.0+cu115 -f https://download.pytorch.org/whl/torch_stable.html"
+build-windows = "pyinstaller app.py -y --onefile -n nicepipe --collect-data mediapipe --exclude-module uvloop --icon nicepipe.ico"
+dev = "python app.py"
+
 [tool.poetry.dependencies]
 python = ">=3.8,<3.10"
 numpy = "^1.22.3"
@@ -19,18 +29,26 @@ pyinstaller = "^4.10"
 tensorflow = "^2.8.0"
 rich = "^12.2.0"
 click = "^8.1.2"
+PyYAML = "^6.0"
 
-[tool.poe.tasks]
-## PyTorch with CUDA 11.1. If PyTorch is imported first, importing Tensorflow will detect CUDA + cuDNN bundled with PyTorch
-## Run with the command "poe post-update"
-## See https://github.com/python-poetry/poetry/issues/2543
-post-update = "pip install torch==1.11.0+cu115 torchvision==0.12.0+cu115 -f https://download.pytorch.org/whl/torch_stable.html"
-build-windows = "pyinstaller app.py -y --onefile -n nicepipe --collect-data mediapipe"
+[tool.poetry.group.cuda.dependencies]
+nvidia-cuda-runtime-cu11 = {version = "^2021.12.20", source = "nvidia"}
+nvidia-cublas-cu11 = {version = "^2022.3.24", source = "nvidia"}
+nvidia-cufft-cu11 = {version = "^2022.3.24", source = "nvidia"}
+nvidia-curand-cu11 = {version = "^2022.3.24", source = "nvidia"}
+nvidia-cusolver-cu11 = {version = "^2022.3.24", source = "nvidia"}
+nvidia-cusparse-cu11 = {version = "^2022.3.24", source = "nvidia"}
+nvidia-cudnn = {version = "^8.2.0", source = "nvidia", platform = "linux"}
 
 [tool.poetry.group.dev.dependencies]
 poethepoet = "^0.13.1"
 autopep8 = "^1.6.0"
 line-profiler = "^3.5.1"
+
+[[tool.poetry.source]]
+name = "nvidia"
+url = "https://pypi.ngc.nvidia.com/"
+secondary = true
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

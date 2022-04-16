@@ -4,7 +4,6 @@ from rich import inspect, print
 from rich.prompt import Confirm
 from multiprocessing import freeze_support
 # import torch
-# import tensorflow as tf
 import cv2
 import asyncio
 import mediapipe as mp
@@ -14,6 +13,7 @@ import mediapipe.python.solutions.pose as mp_pose
 
 from mediapiping import Worker, rlloop
 from mediapiping.rich import enable_fancy_console, rate_bar, layout, live, console
+from mediapiping.utils import force_cuda_load
 
 
 log = logging.getLogger(__name__)
@@ -98,17 +98,21 @@ if __name__ == '__main__':
     with enable_fancy_console():
         live.stop()
         # uvloop only available on unix platform
-        # try:
-        #     import uvloop  # type: ignore
-        #     uvloop.install()
-        # # means we on windows
-        # except ModuleNotFoundError:
-        #     from multiprocessing import freeze_support
-        #     freeze_support()  # needed on windows for multiprocessing
+        try:
+            import uvloop  # type: ignore
+            uvloop.install()
+        # means we on windows
+        except ModuleNotFoundError:
+            pass
 
         # if Confirm.ask("Run CUDA Test?", default=False):
-        #    print(
-        #        f'Torch CUDA: {torch.cuda.is_available()}, Tensorflow CUDA: {len(tf.config.list_physical_devices("GPU")) > 0}')
+        #     print(
+        #         f'Torch CUDA: {torch.cuda.is_available()}, Tensorflow CUDA: {len(tf.config.list_physical_devices("GPU")) > 0}')
+        if Confirm.ask("Run CUDA Test?", default=False):
+            force_cuda_load()
+            import tensorflow as tf
+            print(
+                f'Torch CUDA: disabled, Tensorflow CUDA: {len(tf.config.list_physical_devices("GPU")) > 0}')
 
         LOCAL_TEST = Confirm.ask("Run Local Test?", default=False)
         asyncio.run(main())
