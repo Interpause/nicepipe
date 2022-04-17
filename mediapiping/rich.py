@@ -56,7 +56,7 @@ def enable_fancy_console():
     )
 
     layout['Info'].split_column(
-        Layout(Panel('Mediapiping v0.1.0 by JHTech. Ctrl+C (or ESC in local test mode) to stop.')),
+        Layout(Panel('Ctrl+C/ESC to stop.')),
         Layout(name="Misc")
     )
 

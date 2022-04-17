@@ -1,9 +1,11 @@
 # NOTE: IF RUNNING ON WINDOWS, DISABLE GAME MODE!!! ELSE LAG WHEN SERVER IS NOT FOREGROUND
+
 import logging
-from rich import inspect, print
+from rich import print
+from rich.markup import escape
 from rich.prompt import Confirm
 from multiprocessing import freeze_support
-# import torch
+
 import cv2
 import asyncio
 import mediapipe as mp
@@ -11,10 +13,9 @@ import mediapipe.python.solutions.drawing_utils as mp_drawing
 import mediapipe.python.solutions.drawing_styles as mp_drawing_styles
 import mediapipe.python.solutions.pose as mp_pose
 
+import mediapiping
 from mediapiping import Worker, rlloop
 from mediapiping.rich import enable_fancy_console, rate_bar, layout, live, console
-from mediapiping.utils import force_cuda_load
-
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
@@ -32,7 +33,9 @@ mp_cfg = dict(
 )
 
 # enable/disable the local preview/test window
-LOCAL_TEST = True
+LOCAL_TEST_ENABLED = True
+# enable/disable tensorflow/CUDA functionality
+CUDA_ENABLED = True
 
 
 async def main():
@@ -44,9 +47,10 @@ async def main():
             live.transient = False
             live.start()
         asyncio.create_task(restart_live_console())
-        log.info(':smiley: hewwo world! :eggplant:', extra={"markup": True})
+        log.info(f":smiley: hewwo world! :eggplant: JHTech's Mediapiping [red]v{mediapiping.__version__}[/red]!", extra={
+                 "markup": True, "highlighter": None})
         async with Worker(source=1, mp_pose_cfg=mp_cfg, max_fps=30) as worker:
-            if not LOCAL_TEST:
+            if not LOCAL_TEST_ENABLED:
                 while True:
                     await asyncio.sleep(0)
             else:
@@ -103,16 +107,25 @@ if __name__ == '__main__':
             uvloop.install()
         # means we on windows
         except ModuleNotFoundError:
+            log.warning(
+                'Windows detected! Disable Windows Game Mode else worker will lag when not in foreground!')
             pass
 
         # if Confirm.ask("Run CUDA Test?", default=False):
+        #     import torch
         #     print(
         #         f'Torch CUDA: {torch.cuda.is_available()}, Tensorflow CUDA: {len(tf.config.list_physical_devices("GPU")) > 0}')
-        if Confirm.ask("Run CUDA Test?", default=False):
-            force_cuda_load()
-            import tensorflow as tf
-            print(
-                f'Torch CUDA: disabled, Tensorflow CUDA: {len(tf.config.list_physical_devices("GPU")) > 0}')
+        try:
+            import mediapiping.cuda  # noqa
+            if Confirm.ask("Run CUDA Test?", default=False):
+                log.debug(f'DLLs loaded: {mediapiping.cuda.dlls}')
+                import tensorflow as tf  # noqa
+                log.info(
+                    f'Torch CUDA: disabled, Tensorflow CUDA: {len(tf.config.list_physical_devices("GPU")) > 0}')
+        # means CUDA & Tensorflow disabled
+        except ModuleNotFoundError:
+            CUDA_ENABLED = False
+            pass
 
-        LOCAL_TEST = Confirm.ask("Run Local Test?", default=False)
+        LOCAL_TEST_ENABLED = Confirm.ask("Run Local Test?", default=False)
         asyncio.run(main())

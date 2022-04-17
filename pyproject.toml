@@ -13,7 +13,41 @@ readme = "README.md"
 # 2. Poetry doesn't know how to deal with +tags on the version.
 # See https://github.com/python-poetry/poetry/issues/2543
 install-torch = "pip install torch==1.11.0+cu115 torchvision==0.12.0+cu115 -f https://download.pytorch.org/whl/torch_stable.html"
-build-windows = "pyinstaller app.py -y --onefile -n nicepipe --collect-data mediapipe --exclude-module uvloop --icon nicepipe.ico"
+build-windows-minimal = """\
+pyinstaller app.py \
+--name nicepipe \
+--icon nicepipe.ico \
+--noconfirm \
+--onefile \
+--collect-data mediapipe \
+--exclude-module uvloop \
+--exclude-module tensorflow \
+--exclude-module mediapiping.cuda\
+"""
+build-windows = """\
+pyinstaller app.py \
+--name nicepipe \
+--icon nicepipe.ico \
+--noconfirm \
+--onefile \
+--collect-data mediapipe \
+--exclude-module uvloop \
+--paths cudnn\\bin \
+--paths cudnn\\dll_x64 \
+--paths .venv\\lib\\site-packages\\nvidia\\cublas\\lib\\x64 \
+--paths .venv\\lib\\site-packages\\nvidia\\cuda_runtime\\bin \
+--paths .venv\\lib\\site-packages\\nvidia\\cufft\\bin \
+--paths .venv\\lib\\site-packages\\nvidia\\curand\\bin \
+--paths .venv\\lib\\site-packages\\nvidia\\cusolver\\bin \
+--paths .venv\\lib\\site-packages\\nvidia\\cusparse\\bin \
+--upx-exclude cudart64_110.dll \
+--upx-exclude cublas64_11.dll \
+--upx-exclude cublaslt64_11.dll \
+--upx-exclude cusolver64_11.dll \
+--upx-exclude curand64_10.dll \
+--upx-exclude cusparse64_11.dll \
+--upx-exclude cufft64_10.dll\
+"""
 dev = "python app.py"
 
 [tool.poetry.dependencies]
@@ -25,7 +59,6 @@ protobuf = "^3.20.0"
 mediapipe = "^0.8.9.1"
 aioprocessing = "^2.0.0"
 uvloop = {version = "^0.16.0", platform = "linux"}
-pyinstaller = "^4.10"
 tensorflow = "^2.8.0"
 rich = "^12.2.0"
 click = "^8.1.2"
@@ -44,6 +77,7 @@ nvidia-cudnn = {version = "^8.2.0", source = "nvidia", platform = "linux"}
 poethepoet = "^0.13.1"
 autopep8 = "^1.6.0"
 line-profiler = "^3.5.1"
+pyinstaller = "^4.10"
 
 [[tool.poetry.source]]
 name = "nvidia"
