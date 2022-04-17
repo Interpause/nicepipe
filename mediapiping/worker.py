@@ -35,19 +35,23 @@ DEFAULT_MP_POSE_CFG = dict(
 class Worker:
     '''worker to receive video & run inference & broadcast it'''
 
-    source: str | int = 0
+    cv2_args: list = field(default_factory=lambda: [0])
     '''cv2.VideoCapture source'''
     mp_pose_cfg: dict = field(
         default_factory=lambda: deepcopy(DEFAULT_MP_POSE_CFG))
     '''kwargs to configure mediapipe Pose'''
     max_fps: int = 30
+    wss_host: str = 'localhost'
+    wss_port: int = 8080
+    cv2_height: int = 480
+    cv2_width: int = 640
 
     def __post_init__(self):
         self.cur_data = None
         self.cur_img = None
         self.pbar = [rate_bar.add_task("worker loop", total=float(
             'inf')), rate_bar.add_task("predict loop", total=float('inf'))]
-        self.wss = WebsocketServer()
+        self.wss = WebsocketServer(self.wss_host, self.wss_port)
 
     def _recv(self):
         # TODO: use pyAV instead of cv2. support webRTC.
@@ -121,7 +125,10 @@ class Worker:
             yield self.cur_data, self.cur_img
 
     async def open(self):
-        self.cap = cv2.VideoCapture(self.source)
+        self.cap = cv2.VideoCapture(*self.cv2_args)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.cv2_width)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.cv2_height)
+        self.cap.set(cv2.CAP_PROP_FPS, self.max_fps)
         self.mp_proc, self._mp_predict = mp_pose_process.start(
             self.mp_pose_cfg)
         await asyncio.gather(self.wss.open())
