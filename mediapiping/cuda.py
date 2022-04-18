@@ -5,40 +5,63 @@
 # ^ hence the need to extend search paths
 # see https://pyinstaller.org/en/stable/feature-notes.html#solution-in-pyinstaller
 
+import ctypes
+from pathlib import Path
+import sys
 import os
 import nvidia
-from ctypes import WinDLL
+import logging
 
-PIP_NVIDIA_PATH = nvidia.__path__[0]
+log = logging.getLogger(__name__)
 
-DLL_PATHS = [
-    '.',
-    'cudnn\\bin',
-    'cudnn\\dll_x64',
-    os.path.join(PIP_NVIDIA_PATH, 'cublas\\lib\\x64'),
-    os.path.join(PIP_NVIDIA_PATH, 'cuda_runtime\\bin'),
-    os.path.join(PIP_NVIDIA_PATH, 'cufft\\bin'),
-    os.path.join(PIP_NVIDIA_PATH, 'curand\\bin'),
-    os.path.join(PIP_NVIDIA_PATH, 'cusolver\\bin'),
-    os.path.join(PIP_NVIDIA_PATH, 'cusparse\\bin')
+PIP_NVIDIA_PATH = Path(nvidia.__path__[0])
+'''path to pip-installed nvidia folder'''
+
+CUDA_LIBS = [
+    'cuda_runtime',
+    'cublas',
+    'cufft',
+    'curand',
+    'cusolver',
+    'cusparse',
+    'cudnn'
 ]
+'''names of cuda library folders'''
 
-for path in DLL_PATHS:
-    try:
-        os.add_dll_directory(os.path.abspath(path))
-    except:
-        pass
+DLL_PATHS = []
+'''paths to look for DLLs in'''
 
-dlls = [
-    WinDLL('cudart64_110.dll'),
-    WinDLL('cublas64_11.dll'),
-    WinDLL('cublasLt64_11.dll'),
-    WinDLL('cufft64_10.dll'),
-    WinDLL('curand64_10.dll'),
-    WinDLL('cusolver64_11.dll'),
-    WinDLL('cusparse64_11.dll'),
-    WinDLL('cudnn64_8.dll')
-]
+if sys.platform.startswith('linux'):
+    # will not be detected by PyInstaller.
+    # however, no way to extend DLL search path at runtime on Linux.
+    DLL_PATHS += [PIP_NVIDIA_PATH / lib / 'lib' for lib in CUDA_LIBS]
+    dlls = []
+    for path in DLL_PATHS:
+        if path.is_dir():
+            dlls += [ctypes.CDLL(path) for path in path.glob('**/*.so.*')]
 
+elif sys.platform.startswith('windows'):
+    DLL_PATHS += [
+        Path('.') / 'cudnn' / 'bin',
+        Path('.') / 'cudnn' / 'dll_x64',
+        PIP_NVIDIA_PATH / 'cublas' / 'lib' / 'x64'
+    ]
+    DLL_PATHS += [PIP_NVIDIA_PATH / lib / 'bin' for lib in CUDA_LIBS]
 
-# print('DLLs loaded: ', dlls)
+    for path in DLL_PATHS:
+        if path.is_dir():
+            os.add_dll_directory(str(path.resolve()))
+
+    dlls = [
+        ctypes.WinDLL('cudart64_110.dll'),
+        ctypes.WinDLL('cublas64_11.dll'),
+        ctypes.WinDLL('cublasLt64_11.dll'),
+        ctypes.WinDLL('cufft64_10.dll'),
+        ctypes.WinDLL('curand64_10.dll'),
+        ctypes.WinDLL('cusolver64_11.dll'),
+        ctypes.WinDLL('cusparse64_11.dll'),
+        ctypes.WinDLL('cudnn64_8.dll')
+    ]
+
+else:
+    raise ImportError(f'{__name__} does not support {sys.platform}')

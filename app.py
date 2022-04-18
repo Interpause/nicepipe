@@ -152,22 +152,21 @@ if __name__ == '__main__':
 
         cfg = get_config()
 
-        # if Confirm.ask("Run CUDA Test?", default=False):
-        #     import torch
-        #     print(
-        #         f'Torch CUDA: {torch.cuda.is_available()}, Tensorflow CUDA: {len(tf.config.list_physical_devices("GPU")) > 0}')
-
         try:
             import mediapiping.cuda  # noqa
             if not cfg['no_local_test']:
                 if Confirm.ask("Run CUDA Test?", default=False):
-                    log.debug(f'DLLs loaded: {mediapiping.cuda.dlls}')
                     import tensorflow as tf  # noqa
+                    # import torch # torch.cuda.is_available()
+                    log.debug(f'DLLs loaded: {mediapiping.cuda.dlls}')
                     log.info(
                         f'Torch CUDA: disabled, Tensorflow CUDA: {len(tf.config.list_physical_devices("GPU")) > 0}')
         # means CUDA & Tensorflow disabled
-        except:
+        except ModuleNotFoundError:
             CUDA_ENABLED = False
+        except Exception as e:
+            CUDA_ENABLED = False
+            log.warning(e)
 
         if not cfg['no_local_test']:
             LOCAL_TEST_ENABLED = Confirm.ask("Run Local Test?", default=False)
