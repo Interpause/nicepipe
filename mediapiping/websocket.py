@@ -27,7 +27,7 @@ class WebsocketServer:
         self.clients.add(ws)
         try:
             asyncio.create_task(self._heartbeat(ws))
-            # infinite client msg generator... I can rate-limit this lmao
+            # while not useful in this context, rate-limiting is possible
             async for msg in ws:
                 try:
                     obj = json.loads(msg)

@@ -27,24 +27,35 @@ DEFAULT_MP_POSE_CFG = dict(
     min_tracking_confidence=0.5
 )
 
-# TODO: split into 3 loops: receive, predict and send. asyncio means less boiler is needed than using threads
-# the predict loop ofc isnt doing the predicting, its just sending & waiting on each model inference process
+# TODO: asyncio reduces boilerplate & bugs when doing concurrency
+# 3 loop types:
+# - Receive loop (source FPS + user-set FPS)
+# - Predict loop (user-set FPS per model)
+# - Output loop (user-set FPS)
+# typically only 1 receive loop. Currently using openCV, ideally use pyAV
+# 1 predict loop per model, cur_results is a dict of each model's output
+# typically only 1 output loop (websocket server). As worker conceptually
+# takes in video & outputs predictions, visualizing or saving not in scope
+# predict loops should check if image is different before predicting
+#
+# Using asyncio's thread/process pool executors, possible that above
+# can be very very efficient
 
 
 @dataclass
 class Worker:
-    '''worker to receive video & run inference & broadcast it'''
+    '''worker receives videos & outputs predictions'''
 
     cv2_args: list = field(default_factory=lambda: [0])
-    '''cv2.VideoCapture source'''
+    '''cv2.VideoCapture args'''
+    cv2_height: int = 480
+    cv2_width: int = 640
     mp_pose_cfg: dict = field(
         default_factory=lambda: deepcopy(DEFAULT_MP_POSE_CFG))
     '''kwargs to configure mediapipe Pose'''
     max_fps: int = 30
     wss_host: str = 'localhost'
     wss_port: int = 8080
-    cv2_height: int = 480
-    cv2_width: int = 640
 
     def __post_init__(self):
         self.cur_data = None
@@ -55,13 +66,11 @@ class Worker:
 
     def _recv(self):
         # TODO: use pyAV instead of cv2. support webRTC.
-        # self.cap.read() should be async to allow other things to run...
         while self.cap.isOpened():
             success, img = self.cap.read()
             if not success:
                 log.warn("Ignoring empty camera frame.")
-                # If loading a video, use 'break' instead of 'continue'.
-                continue
+                continue  # break if using video
 
             # pass image by reference by disabling write
             img.flags.writeable = False
@@ -87,8 +96,6 @@ class Worker:
         }))
 
     async def _predict(self, img, wait=False, cancel=False):
-        # TODO: execute multiple models concurrently & combine results
-        # some method to check a model is busy or not. bad idea if all models are supposed to run desynced from each other
         while wait and self._mp_predict.is_busy:
             if cancel and not self.cur_img is img:
                 return None

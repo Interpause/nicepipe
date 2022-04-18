@@ -50,10 +50,8 @@ def childtask(pipe: Connection, mpp: MpPose):
     while True:
         img = pipe.recv()
         img = img[..., ::-1]  # BGR to RGB
-        # print('child recv: ', time.time_ns())
         results = mpp.process(img)
         serialized = serialize_mp_results(results)
-        # print('child send: ', time.time_ns())
         pipe.send(serialized)
 
 
@@ -72,13 +70,12 @@ class Predictor:
         if self.is_busy:
             return None
         self.is_busy = True
-        # print('parent send: ', time.time_ns())
         await self.pipe.coro_send(img)
-        self.is_busy = False
+
         # tested: no broken pipe if clear debounce before recv is done
         reply = await self.pipe.coro_recv()
+        self.is_busy = False
 
-        # print('parent recv: ', time.time_ns())
         return deserialize_mp_results(reply)
 
 
