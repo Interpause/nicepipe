@@ -9,7 +9,7 @@ import asyncio
 import google.protobuf.json_format as pb_json
 
 import mediapiping.mp_pose_process as mp_pose_process
-from mediapiping.utils import rlloop
+from mediapiping.utils import encodeJPG, rlloop
 from mediapiping.rich import rate_bar
 from mediapiping.websocket import WebsocketServer
 # from tqdm import tqdm
@@ -69,29 +69,20 @@ class Worker:
 
     def _send(self):
         # TODO: fyi send webp over wss <<< send video chunks over anything
-        # and wss << webrtc
-        # encoding the image like this has a performance hit
-        # https://docs.opencv.org/3.4/d8/d6a/group__imgcodecs__flags.html#ga292d81be8d76901bff7988d18d2b42ac
-        # webp is slower tho it has better quality for size
-        # success, buf = cv2.imencode('.webp', self.cur_img, [
-        #                            cv2.IMWRITE_WEBP_QUALITY, 100])
 
-        success, buf = cv2.imencode('.jpg', self.cur_img)
-        if not success:
-            raise 'image encode failed'
+        img = encodeJPG(self.cur_img)
 
-        img = base64.b64encode(buf).decode('ascii')
-        pose = pb_json.MessageToDict(self.cur_data.pose_landmarks)[
-            'landmark'] if not self.cur_data is None else None
-
-        # below checks if too many frames are being skipped
-        # if hasattr(self, 'ptest'):
-        #     if(self.ptest == pose):
-        #         print('prediction reused')
-        # self.ptest = pose
+        mask = None
+        pose = None
+        if not self.cur_data is None:
+            pose = pb_json.MessageToDict(
+                self.cur_data.pose_landmarks)['landmark']
+            if hasattr(self.cur_data, 'segmentation_mask'):
+                mask = encodeJPG(self.cur_data.segmentation_mask)
 
         asyncio.create_task(self.wss.broadcast('frame', {
             'img': img,
+            'mask': mask,
             'pose': pose
         }))
 
