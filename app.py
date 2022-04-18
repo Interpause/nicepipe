@@ -166,9 +166,8 @@ if __name__ == '__main__':
                     log.info(
                         f'Torch CUDA: disabled, Tensorflow CUDA: {len(tf.config.list_physical_devices("GPU")) > 0}')
         # means CUDA & Tensorflow disabled
-        except ModuleNotFoundError:
+        except:
             CUDA_ENABLED = False
-            pass
 
         if not cfg['no_local_test']:
             LOCAL_TEST_ENABLED = Confirm.ask("Run Local Test?", default=False)
