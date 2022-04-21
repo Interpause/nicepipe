@@ -4,7 +4,6 @@ from dataclasses import dataclass, field
 from copy import deepcopy
 
 import cv2
-import base64
 import asyncio
 import google.protobuf.json_format as pb_json
 
@@ -12,7 +11,6 @@ import nicepipe.mp_pose_process as mp_pose_process
 from nicepipe.utils import encodeJPG, rlloop
 from nicepipe.rich import rate_bar
 from nicepipe.websocket import WebsocketServer
-# from tqdm import tqdm
 
 log = getLogger(__name__)
 
@@ -108,7 +106,7 @@ class Worker:
         async def set_prediction(img):
             results = await self._predict(img, wait=True, cancel=True)
             # prediction process will return None when still debouncing
-            if not results is None:
+            if not results is 'busy':
                 self.cur_data = results
                 rate_bar.update(self.pbar[1], advance=1)
 

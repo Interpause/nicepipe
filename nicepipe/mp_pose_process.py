@@ -66,13 +66,11 @@ class Predictor:
     is_busy = False
 
     async def __call__(self, img: np.ndarray):
-        '''send an BGR image to the child process for prediction. Returns None when debouncing.'''
+        '''send an BGR image to the child process for prediction. Returns 'busy' when debouncing.'''
         if self.is_busy:
-            return None
+            return 'busy'
         self.is_busy = True
         await self.pipe.coro_send(img)
-
-        # tested: no broken pipe if clear debounce before recv is done
         reply = await self.pipe.coro_recv()
         self.is_busy = False
 
