@@ -48,6 +48,20 @@ pyinstaller app.py \
 --upx-exclude cusparse64_11.dll \
 --upx-exclude cufft64_10.dll\
 """
+build-linux = """\
+pyinstaller app.py \
+--name nicepipe \
+--noconfirm \
+--onefile \
+--collect-data mediapipe \
+--paths .venv/lib/site-packages/nvidia/cublas/lib \
+--paths .venv/lib/site-packages/nvidia/cuda_runtime/lib \
+--paths .venv/lib/site-packages/nvidia/cudnn/lib \
+--paths .venv/lib/site-packages/nvidia/cufft/lib \
+--paths .venv/lib/site-packages/nvidia/curand/lib \
+--paths .venv/lib/site-packages/nvidia/cusolver/lib \
+--paths .venv/lib/site-packages/nvidia/cusparse/lib\
+"""
 dev = "python app.py"
 
 [tool.poetry.dependencies]

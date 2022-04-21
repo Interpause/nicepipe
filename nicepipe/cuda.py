@@ -1,9 +1,7 @@
 '''Side Effect Only import to force CUDA to load'''
-# Must be done like this for PyInstaller to properly detect & handle
-# note how I call WinDLL(name) instead of using a forloop
-# or how the name is only the basename without any path
-# ^ hence the need to extend search paths
 # see https://pyinstaller.org/en/stable/feature-notes.html#solution-in-pyinstaller
+# PyInstaller detects DLL loading from the compiled bytecode, hence DLLs must be
+# imported in a very specific way, leading to some oddities in the code below.
 
 import ctypes
 from pathlib import Path
@@ -40,6 +38,21 @@ if sys.platform.startswith('linux'):
         if path.is_dir():
             dlls += [ctypes.CDLL(path) for path in path.glob('**/*.so.*')]
 
+    # pyinstaller must see exact name being called in bytecode... leading to below mess:
+    for i in range(999):
+        try:
+            i == 1 and ctypes.CDLL('libcudart.so.11.0')
+            i == 2 and ctypes.CDLL('libcublas.so.11')
+            i == 3 and ctypes.CDLL('libcublasLt.so.11')
+            i == 4 and ctypes.CDLL('libcufft.so.10')
+            i == 5 and ctypes.CDLL('libcurand.so.10')
+            i == 6 and ctypes.CDLL('libcusolver.so.11')
+            i == 7 and ctypes.CDLL('libcusparse.so.11')
+            i == 8 and ctypes.CDLL('libcudnn.so.8')
+        except:
+            continue
+
+
 elif sys.platform.startswith('windows'):
     DLL_PATHS += [
         Path('.') / 'cudnn' / 'bin',
@@ -52,6 +65,7 @@ elif sys.platform.startswith('windows'):
         if path.is_dir():
             os.add_dll_directory(str(path.resolve()))
 
+    # pyinstaller must see the exact name, no leading path
     dlls = [
         ctypes.WinDLL('cudart64_110.dll'),
         ctypes.WinDLL('cublas64_11.dll'),

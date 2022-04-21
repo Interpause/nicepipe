@@ -32,6 +32,8 @@ TODO: Insert planned architecture documentation.
 
 Through hacks and obscurity, I utilize a secret Nvidia Wheel Repository, which just so happens to have Windows builds of the CUDA runtime (besides Linux of course). Unfortunately, specifically for cuDNN, there are only Linux wheels available. Hence the _Windows Only_ step.
 
-Another quirk is that Nvidia didn't bother to load the DLLs or `.so` in their wheels. I wrote a workaround. **`import nicepipe.cuda` must be run before `import tensorflow`!**.
+Another quirk is that Nvidia didn't bother to load the DLLs in their wheels. I wrote a workaround. **`import nicepipe.cuda` must be run before `import tensorflow`!**.
 
 The workaround is actually a side-effect import designed not only to load CUDA successfully, but also to be detectable by `PyInstaller` such that the required DLLs are copied and linked.
+
+On Linux, while `nicepipe.cuda` works in development, and `PyInstaller` correctly detects the CUDA DLLs, the executable cannot properly be built. Even openCV cannot properly bundle in qt. My guess is my unique system configuration might be messing with `PyInstaller`'s DLL detection. It might also be that on Linux, specifying additional paths in the build command might be insufficient, and instead these paths must be specified in `LD_LIBRARY_PATH`, which can fortunately be done via `poethepoet`. That said, building for Linux isn't supported.
