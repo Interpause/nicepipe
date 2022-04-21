@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "mediapiping"
+name = "nicepipe"
 version = "0.1.0"
-description = "insert description"
+description = "remote worker for video inference"
 license = "Proprietary"
 authors = ["John-Henry Lim <42513874+Interpause@users.noreply.github.com>"]
 readme = "README.md"
@@ -22,7 +22,7 @@ pyinstaller app.py \
 --collect-data mediapipe \
 --exclude-module uvloop \
 --exclude-module tensorflow \
---exclude-module mediapiping.cuda\
+--exclude-module nicepipe.cuda\
 """
 build-windows = """\
 pyinstaller app.py \

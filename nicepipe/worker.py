@@ -8,10 +8,10 @@ import base64
 import asyncio
 import google.protobuf.json_format as pb_json
 
-import mediapiping.mp_pose_process as mp_pose_process
-from mediapiping.utils import encodeJPG, rlloop
-from mediapiping.rich import rate_bar
-from mediapiping.websocket import WebsocketServer
+import nicepipe.mp_pose_process as mp_pose_process
+from nicepipe.utils import encodeJPG, rlloop
+from nicepipe.rich import rate_bar
+from nicepipe.websocket import WebsocketServer
 # from tqdm import tqdm
 
 log = getLogger(__name__)

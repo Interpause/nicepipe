@@ -1,5 +1,3 @@
-# NOTE: IF RUNNING ON WINDOWS, DISABLE GAME MODE!!! ELSE LAG WHEN SERVER IS NOT FOREGROUND
-
 import logging
 from rich import print
 from rich.markup import escape
@@ -15,9 +13,9 @@ import mediapipe.python.solutions.drawing_utils as mp_drawing
 import mediapipe.python.solutions.drawing_styles as mp_drawing_styles
 import mediapipe.python.solutions.pose as mp_pose
 
-import mediapiping
-from mediapiping import Worker, rlloop
-from mediapiping.rich import enable_fancy_console, rate_bar, layout, live, console
+import nicepipe
+from nicepipe import Worker, rlloop
+from nicepipe.rich import enable_fancy_console, rate_bar, layout, live, console
 
 
 log = logging.getLogger(__name__)
@@ -78,7 +76,7 @@ async def main(cfg):
             live.transient = False
             live.start()
         asyncio.create_task(restart_live_console())
-        log.info(f":smiley: hewwo world! :eggplant: JHTech's Mediapiping [red]v{mediapiping.__version__}[/red]!", extra={
+        log.info(f":smiley: hewwo world! :eggplant: JHTech's nicepipe [red]v{nicepipe.__version__}[/red]!", extra={
                  "markup": True, "highlighter": None})
         async with Worker(
             cv2_args=cfg['worker_cfg']['cv2_args'],
@@ -153,12 +151,12 @@ if __name__ == '__main__':
         cfg = get_config()
 
         try:
-            import mediapiping.cuda  # noqa
+            import nicepipe.cuda  # noqa
             if not cfg['no_local_test']:
                 if Confirm.ask("Run CUDA Test?", default=False):
                     import tensorflow as tf  # noqa
                     # import torch # torch.cuda.is_available()
-                    log.debug(f'DLLs loaded: {mediapiping.cuda.dlls}')
+                    log.debug(f'DLLs loaded: {nicepipe.cuda.dlls}')
                     log.info(
                         f'Torch CUDA: disabled, Tensorflow CUDA: {len(tf.config.list_physical_devices("GPU")) > 0}')
         # means CUDA & Tensorflow disabled
