@@ -30,7 +30,7 @@ def get_config():
                 # NOTE: run each model complexity once to download model files
                 model_complexity=1,  # 0, 1 or 2 (0 or 1 is okay)
                 smooth_landmarks=True,
-                enable_segmentation=True,
+                enable_segmentation=False,
                 smooth_segmentation=True,
                 min_detection_confidence=0.5,
                 min_tracking_confidence=0.5
@@ -39,7 +39,7 @@ def get_config():
             log_level=20,
             worker_cfg=dict(
                 cv2_args=[0],
-                cv2_height=480,
+                cv2_height=320,
                 cv2_width=640,
                 max_fps=30,
                 wss_host='localhost',
