@@ -96,7 +96,7 @@ class Worker:
     async def _predict(self, img, wait=False, cancel=False):
         while wait and self._mp_predict.is_busy:
             if cancel and not self.cur_img is img:
-                return None
+                return 'busy'
             await asyncio.sleep(0)
 
         results = await self._mp_predict(img)
@@ -105,7 +105,7 @@ class Worker:
     async def _loop(self):
         async def set_prediction(img):
             results = await self._predict(img, wait=True, cancel=True)
-            # prediction process will return None when still debouncing
+            # prediction process will return 'busy' when still debouncing
             if results != 'busy':
                 self.cur_data = results
                 rate_bar.update(self.pbar[1], advance=1)
