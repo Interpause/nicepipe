@@ -53,7 +53,7 @@ if sys.platform.startswith('linux'):
             continue
 
 
-elif sys.platform.startswith('windows'):
+elif sys.platform.startswith('win'):
     DLL_PATHS += [
         Path('.') / 'cudnn' / 'bin',
         Path('.') / 'cudnn' / 'dll_x64',
