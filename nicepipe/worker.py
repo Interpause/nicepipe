@@ -106,7 +106,7 @@ class Worker:
         async def set_prediction(img):
             results = await self._predict(img, wait=True, cancel=True)
             # prediction process will return None when still debouncing
-            if not results is 'busy':
+            if results != 'busy':
                 self.cur_data = results
                 rate_bar.update(self.pbar[1], advance=1)
 
