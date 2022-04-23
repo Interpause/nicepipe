@@ -42,7 +42,8 @@ def get_config():
             # https://docs.python.org/3/library/logging.html#logging-levels
             log_level=20,
             worker_cfg=dict(
-                cv2_args=[0, cv2.CAP_DSHOW],
+                # default cv2 capture source on windows has an unsilenceable warning... but dshow (the alternative) lags..
+                cv2_args=[0],
                 cv2_height=320,
                 cv2_width=640,
                 max_fps=30,
@@ -83,7 +84,7 @@ async def main(cfg):
         wss_port=cfg['worker_cfg']['wss_port'],
     ) as worker:
         if LOCAL_TEST_ENABLED:
-            main_loop = rate_bar.add_task("main loop", total=float('inf'))
+            main_loop = rate_bar.add_task("demo loop", total=float('inf'))
 
             async for results, img in rlloop(cfg['main_fps']*2, iterator=worker.next(), update_func=lambda: rate_bar.update(main_loop, advance=1)):
                 if img is None:
@@ -134,6 +135,7 @@ if __name__ == '__main__':
         try:
             live.stop()
             # uvloop only available on unix platform
+            # TODO: move this into nicepipe __init__.py or elsewhere so child processes can also import it
             try:
                 import uvloop  # type: ignore
                 uvloop.install()
