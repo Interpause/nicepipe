@@ -37,3 +37,9 @@ Another quirk is that Nvidia didn't bother to load the DLLs in their wheels. I w
 The workaround is actually a side-effect import designed not only to load CUDA successfully, but also to be detectable by `PyInstaller` such that the required DLLs are copied and linked.
 
 On Linux, while `nicepipe.cuda` works in development, and `PyInstaller` correctly detects the CUDA DLLs, the executable cannot properly be built. Even openCV cannot properly bundle in qt. My guess is my unique system configuration might be messing with `PyInstaller`'s DLL detection. It might also be that on Linux, specifying additional paths in the build command might be insufficient, and instead these paths must be specified in `LD_LIBRARY_PATH`, which can fortunately be done via `poethepoet`. That said, building for Linux isn't supported.
+
+### Lots of Error messages on Keyboard Interrupt
+
+I already tried to resolve most of them. There is one caused by `poethepoet` (<https://github.com/nat-n/poethepoet/issues/42>) that can be bypassed by running `python app.py` directly. See <https://stackoverflow.com/questions/70399670/how-to-shutdown-gracefully-on-keyboard-interrupt-when-an-asyncio-task-is-perform> about the rest.
+
+I have ensured at least that the Worker can start and stop without error messages. KeyboardInterrupt is a bit more iffy.

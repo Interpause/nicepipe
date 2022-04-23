@@ -64,7 +64,7 @@ class Worker:
 
     def _recv(self):
         # TODO: use pyAV instead of cv2. support webRTC.
-        while self.cap.isOpened():
+        while self.cap.isOpened() and self.is_open:
             success, img = self.cap.read()
             if not success:
                 log.warn("Ignoring empty camera frame.")
@@ -94,7 +94,7 @@ class Worker:
         }))
 
     async def _predict(self, img, wait=False, cancel=False):
-        while wait and self._mp_predict.is_busy:
+        while wait and self._mp_predict.is_busy and self.is_open:
             if cancel and not self.cur_img is img:
                 return 'busy'
             await asyncio.sleep(0)
@@ -110,30 +110,38 @@ class Worker:
                 self.cur_data = results
                 rate_bar.update(self.pbar[1], advance=1)
 
-        async for img in rlloop(self.max_fps, iter=self._recv(), update_func=lambda: rate_bar.update(self.pbar[0], advance=1)):
-            self.cur_img = img
-            # bottleneck is opencv image yield rate lmao
-            asyncio.create_task(set_prediction(img))
-            self._send()
+        try:
+            async for img in rlloop(self.max_fps, iterator=self._recv(), update_func=lambda: rate_bar.update(self.pbar[0], advance=1)):
+                self.cur_img = img
+                # bottleneck is opencv image yield rate lmao
+                asyncio.create_task(set_prediction(img))
+                self._send()
+                if not self.is_open:
+                    break
+        except KeyboardInterrupt:
+            self.is_open = False
 
     def next(self):
-        while True:
+        while self.is_open:
             yield self.cur_data, self.cur_img
 
     async def open(self):
+        self.is_open = True
         self.cap = cv2.VideoCapture(*self.cv2_args)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.cv2_width)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.cv2_height)
         self.cap.set(cv2.CAP_PROP_FPS, self.max_fps)
-        self.mp_proc, self._mp_predict = mp_pose_process.start(
+        self._mp_predict = mp_pose_process.Predictor(
             self.mp_pose_cfg)
+        self._mp_predict.open()
         await asyncio.gather(self.wss.open())
         self.loop_task = asyncio.create_task(self._loop())
 
     async def close(self):
+        self.is_open = False
         self.cap.release()
-        self.mp_proc.terminate()
-        await asyncio.gather(self.loop_task, self.mp_proc.coro_join(), self.wss.close())
+        self._mp_predict.close()
+        await asyncio.gather(self.loop_task, self.wss.close())
 
     async def __aenter__(self):
         await self.open()

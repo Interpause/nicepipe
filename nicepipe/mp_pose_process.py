@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 import logging
+from pickle import UnpicklingError
 from typing import NamedTuple
 from types import SimpleNamespace
 
@@ -56,31 +57,54 @@ def childtask(pipe: Connection, mpp: MpPose):
 
 
 def childproc(pipe: Connection, cfg: dict):
-    mpp = MpPose(**cfg)
-    childtask(pipe, mpp)
+    # KeyboardInterrupt is separate per process
+    try:
+        mpp = MpPose(**cfg)
+        childtask(pipe, mpp)
+    except KeyboardInterrupt:
+        pass
 
 
 @dataclass
 class Predictor:
-    pipe: Connection
+    cfg: dict
     is_busy = False
+
+    def open(self):
+        parent_pipe, child_pipe = Pipe()
+        self.proc = Process(target=childproc, args=(
+            child_pipe, self.cfg), daemon=True)
+        self.proc.start()
+        self.pipe = parent_pipe
+
+    def close(self):
+        self.proc.terminate()
+        self.proc.join()
 
     async def __call__(self, img: np.ndarray):
         '''send an BGR image to the child process for prediction. Returns 'busy' when debouncing.'''
         if self.is_busy:
             return 'busy'
         self.is_busy = True
-        await self.pipe.coro_send(img)
-        reply = await self.pipe.coro_recv()
-        self.is_busy = False
+        try:
+            await self.pipe.coro_send(img)
+            self.is_busy = False
+            reply = await self.pipe.coro_recv()
+            return deserialize_mp_results(reply)
+        # both EOFError & BrokenPipeError occur when asyncio loop gets terminated
+        # for speed reasons we dont wait for receiving results before sending next image
+        # hence UnpicklingError may ocassionally occur
+        # on windows this doesn't seem fatal, but seems to have been crashing the process
+        # when using linux? further testing needed
+        except (EOFError, BrokenPipeError, UnpicklingError, AssertionError):
+            return 'busy'
+        finally:
+            # turns out in python, finally runs even when continuing/breaking/returning!
+            self.is_busy = False
 
-        return deserialize_mp_results(reply)
+    def __enter__(self):
+        self.open()
+        return self
 
-
-def start(cfg: dict):
-    parent_pipe, child_pipe = Pipe()
-
-    proc = Process(target=childproc, args=(child_pipe, cfg), daemon=True)
-    proc.start()
-
-    return proc, Predictor(parent_pipe)
+    def __exit__(self, exc_t, exc_v, exc_tb):
+        self.close()

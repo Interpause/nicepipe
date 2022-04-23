@@ -14,6 +14,7 @@ class WebsocketServer:
     '''object-based wrapper around websockets'''
     host: str = 'localhost'
     port: int = 8080
+    heartbeat_interval: int = 1
 
     def __post_init__(self):
         self.clients = set()
@@ -21,7 +22,7 @@ class WebsocketServer:
     async def _heartbeat(self, ws):
         while ws.open:
             await self.send_client(ws, 'pong', None)
-            await asyncio.sleep(1)
+            await asyncio.sleep(self.heartbeat_interval)
 
     async def _register_client(self, ws):
         self.clients.add(ws)
