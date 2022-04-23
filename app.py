@@ -4,6 +4,7 @@ from multiprocessing import freeze_support
 
 import yaml
 import os
+import sys
 import cv2
 import asyncio
 import mediapipe.python.solutions.drawing_utils as mp_drawing
@@ -13,6 +14,7 @@ import mediapipe.python.solutions.pose as mp_pose
 import nicepipe
 from nicepipe import Worker, rlloop
 from nicepipe.rich import enable_fancy_console, rate_bar, layout, live, console
+import nicepipe.uvloop
 
 
 log = logging.getLogger(__name__)
@@ -136,16 +138,9 @@ if __name__ == '__main__':
     with enable_fancy_console():
         try:
             live.stop()
-            # uvloop only available on unix platform
-            # TODO: move this into nicepipe __init__.py or elsewhere so child processes can also import it
-            try:
-                import uvloop  # type: ignore
-                uvloop.install()
-            # means we on windows
-            except ModuleNotFoundError:
+            if sys.platform.startswith('win'):
                 log.warning(
                     'Windows detected! Disable Windows Game Mode else worker will lag when not in foreground!')
-                pass
 
             cfg = get_config()
 

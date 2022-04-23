@@ -9,6 +9,7 @@ from aioprocessing import AioConnection as Connection, AioPipe as Pipe, AioProce
 from aioprocessing.process import AioProcess
 
 from nicepipe.utils import rlloop
+import nicepipe.uvloop  # use uvloop for child process asyncio loop
 
 
 async def passthrough(*args):
