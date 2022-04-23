@@ -42,10 +42,11 @@ def get_config():
             # https://docs.python.org/3/library/logging.html#logging-levels
             log_level=20,
             worker_cfg=dict(
+                cv2_source=0,
                 # default cv2 capture source on windows has an unsilenceable warning... but dshow (the alternative) lags..
-                cv2_args=[0],
-                cv2_height=320,
-                cv2_width=640,
+                cv2_cap_api=cv2.CAP_ANY,
+                cv2_size_wh=(1920, 1080),
+                mp_size_wh=(640, 360),
                 max_fps=60,
                 wss_host='localhost',
                 wss_port=8080
@@ -68,25 +69,26 @@ async def main(cfg):
     async def restart_live_console():
         await asyncio.sleep(2)
         console.line(console.height)
-        live.transient = True
+        live.transient = False
         live.start()
     asyncio.create_task(restart_live_console())
 
     log.info(f":smiley: hewwo world! :eggplant: JHTech's nicepipe [red]v{nicepipe.__version__}[/red]!", extra={
              "markup": True, "highlighter": None})
     async with Worker(
-        cv2_args=cfg['worker_cfg']['cv2_args'],
-        cv2_height=cfg['worker_cfg']['cv2_height'],
-        cv2_width=cfg['worker_cfg']['cv2_width'],
+        cv2_source=cfg['worker_cfg']['cv2_source'],
+        cv2_cap_api=cfg['worker_cfg']['cv2_cap_api'],
+        cv2_size_wh=cfg['worker_cfg']['cv2_size_wh'],
+        mp_size_wh=cfg['worker_cfg']['mp_size_wh'],
         mp_pose_cfg=cfg['mp_cfg'],
         max_fps=cfg['worker_cfg']['max_fps'],
         wss_host=cfg['worker_cfg']['wss_host'],
         wss_port=cfg['worker_cfg']['wss_port'],
     ) as worker:
         if LOCAL_TEST_ENABLED:
-            main_loop = rate_bar.add_task("demo loop", total=float('inf'))
+            demo_loop = rate_bar.add_task("demo loop", total=float('inf'))
 
-            async for results, img in rlloop(cfg['main_fps']*2, iterator=worker.next(), update_func=lambda: rate_bar.update(main_loop, advance=1)):
+            async for results, img in rlloop(cfg['main_fps'], iterator=worker.next(), update_func=lambda: rate_bar.update(demo_loop, advance=1)):
                 if img is None:
                     continue
                 if not results is None:

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Tuple, Union
 from logging import getLogger
 from dataclasses import dataclass, field
 
@@ -30,15 +31,19 @@ log = getLogger(__name__)
 class Worker:
     '''worker receives videos & outputs predictions'''
 
-    cv2_args: list = (0,)
-    '''cv2.VideoCapture args'''
-    cv2_height: int = 480
-    cv2_width: int = 640
+    cv2_source: Union[int, str] = 0
+    '''cv2.VideoCapture source'''
+    cv2_cap_api: int = cv2.CAP_ANY
+    '''cv2.VideoCapture API'''
+    cv2_size_wh: Tuple[int, int] = (640, 360)
+    '''cv2.VideoCapture resolution in width, height'''
     mp_pose_cfg: dict = field(
         default_factory=lambda: deepcopy(DEFAULT_MP_POSE_CFG))
     '''MediaPipe Pose config'''
+    mp_size_wh: Tuple[int, int] = (640, 360)
+    '''size to downscale input to for mediapipe pose'''
     max_fps: int = 30
-    '''Max FPS of PredictionWorkers and VideoCapture FPS. PredictionWorkers may exceed input FPS.'''
+    '''Max FPS of PredictionWorkers and VideoCapture FPS. PredictionWorkers may exceed input FPS. cv2 rounds down FPS it doesn't support.'''
     wss_host: str = 'localhost'
     wss_port: int = 8080
 
@@ -52,6 +57,7 @@ class Worker:
     async def _recv(self):
         # TODO: use pyAV instead of cv2. support webRTC.
         while self.cap.isOpened() and self.is_open:
+            # TODO: this should timeout to prevent waiting execessively long for the program to interrupt
             success, img = await asyncio.to_thread(self.cap.read)
             if not success:
                 log.warn("Ignoring empty camera frame.")
@@ -81,11 +87,18 @@ class Worker:
         })
 
     async def _loop(self):
+        # NOTE: dont modify extra downstream else it will affect this one
+        # but interestingly enough...
+        # even if i create a new dict each time (e.g. predict(img, {...}))
+        # popping on that dict downstream, ocassionally it carries over to
+        # the next loop?
+        # I know Python does object caching... am I hitting the limits?
+        extras = {'downscale_size': self.mp_size_wh}
         try:
             async for img in rlloop(self.max_fps, iterator=self._recv(), update_func=lambda: rate_bar.update(self.pbar[0], advance=1)):
                 self.cur_img = img
-                # bottleneck is opencv image yield rate lmao
-                self.cur_data = self._mp_predict.predict(img)
+                self.cur_data = self._mp_predict.predict(
+                    img, extras)
                 # TODO: lag at higher resolution is from here...
                 # webrtc time? output worker? to_thread() abuse?
                 asyncio.create_task(self._send())
@@ -102,9 +115,9 @@ class Worker:
         self.is_open = True
 
         # cv2 VideoCapture
-        self.cap = cv2.VideoCapture(*self.cv2_args)
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.cv2_width)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.cv2_height)
+        self.cap = cv2.VideoCapture(self.cv2_source, self.cv2_cap_api)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.cv2_size_wh[0])
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.cv2_size_wh[1])
         self.cap.set(cv2.CAP_PROP_FPS, self.max_fps)
 
         self._mp_predict = create_predictor_worker(

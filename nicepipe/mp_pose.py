@@ -24,7 +24,8 @@ DEFAULT_MP_POSE_CFG = dict(
 
 
 async def process_input(img, extra):
-    return cv2.resize(img, (640, 360)), extra
+    res = extra.get('downscale_size', (640, 360))
+    return cv2.resize(img, res), {}
 
 
 def serialize_mp_results(results: NamedTuple):

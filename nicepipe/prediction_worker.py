@@ -120,9 +120,9 @@ class PredictionWorker:
             output = await self.pipe.coro_recv()
             create_task(self._set_output(output))
 
-    def predict(self, img: ndarray, extra: dict = {}):
+    def predict(self, img: ndarray, extra: dict = None):
         '''returns latest prediction & scheldules img & extra for the next'''
-        self.current_input = (img, extra)
+        self.current_input = (img, {} if extra is None else extra)
         return self.current_output
 
     async def open(self):
