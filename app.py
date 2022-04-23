@@ -42,14 +42,14 @@ def get_config():
             # https://docs.python.org/3/library/logging.html#logging-levels
             log_level=20,
             worker_cfg=dict(
-                cv2_args=[0],
+                cv2_args=[0, cv2.CAP_DSHOW],
                 cv2_height=320,
                 cv2_width=640,
                 max_fps=30,
                 wss_host='localhost',
                 wss_port=8080
             ),
-            main_fps=60,
+            main_fps=30,
             no_local_test=False,
         )
         with open('./config.yml', 'w') as f:
@@ -67,7 +67,7 @@ async def main(cfg):
     async def restart_live_console():
         await asyncio.sleep(2)
         console.line(console.height)
-        live.transient = False
+        live.transient = True
         live.start()
     asyncio.create_task(restart_live_console())
 
@@ -85,7 +85,7 @@ async def main(cfg):
         if LOCAL_TEST_ENABLED:
             main_loop = rate_bar.add_task("main loop", total=float('inf'))
 
-            async for results, img in rlloop(cfg['main_fps'], iterator=worker.next(), update_func=lambda: rate_bar.update(main_loop, advance=1)):
+            async for results, img in rlloop(cfg['main_fps']*2, iterator=worker.next(), update_func=lambda: rate_bar.update(main_loop, advance=1)):
                 if img is None:
                     continue
                 if not results is None:
