@@ -95,6 +95,10 @@ class PredictionWorker:
     '''deque tracking misc tasks'''
     loop_task: Task = None
     '''main task for both IO loops'''
+    input_num: int = 0
+    '''Number of unique inputs so far, used to limit prediction by input rate.'''
+    lock_fps_to_input: bool = True
+    '''Whether to lock prediction rate to input rate.'''
 
     # multiprocessing
     process: AioProcess = None
@@ -104,11 +108,15 @@ class PredictionWorker:
 
     async def _in_loop(self):
         '''loop for sending inputs to child process'''
+        prev_num = self.input_num
         async for _ in rlloop(self.max_fps):
             if self.is_closing:
                 break
-            if self.current_input is None:
+            # limit fps by input rate, also handily skips initial None input
+            if self.input_num == prev_num:
                 continue
+            if self.lock_fps_to_input:
+                prev_num = self.input_num
             input = await self.process_input(*self.current_input)
             # await this or it accumulates
             await self.pipe.coro_send(input)
@@ -126,7 +134,10 @@ class PredictionWorker:
 
     def predict(self, img: ndarray, extra: dict = None):
         '''returns latest prediction & scheldules img & extra for the next'''
-        self.current_input = (img, {} if extra is None else extra)
+        new_input = (img, {} if extra is None else extra)
+        if self.current_input is None or not img is self.current_input[0] or extra != self.current_input[1]:
+            self.current_input = new_input
+            self.input_num += 1
         return self.current_output
 
     async def open(self):
