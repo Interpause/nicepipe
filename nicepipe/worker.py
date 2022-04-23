@@ -38,6 +38,7 @@ class Worker:
         default_factory=lambda: deepcopy(DEFAULT_MP_POSE_CFG))
     '''MediaPipe Pose config'''
     max_fps: int = 30
+    '''Max FPS of PredictionWorkers and VideoCapture FPS. PredictionWorkers may exceed input FPS.'''
     wss_host: str = 'localhost'
     wss_port: int = 8080
 
@@ -48,10 +49,10 @@ class Worker:
             'inf')), rate_bar.add_task("predict loop", total=float('inf'))]
         self.wss = WebsocketServer(self.wss_host, self.wss_port)
 
-    def _recv(self):
+    async def _recv(self):
         # TODO: use pyAV instead of cv2. support webRTC.
         while self.cap.isOpened() and self.is_open:
-            success, img = self.cap.read()
+            success, img = await asyncio.to_thread(self.cap.read)
             if not success:
                 log.warn("Ignoring empty camera frame.")
                 continue  # break if using video
@@ -60,10 +61,10 @@ class Worker:
             img.flags.writeable = False
             yield img
 
-    def _send(self):
+    async def _send(self):
         # TODO: fyi send webp over wss <<< send video chunks over anything
 
-        img = encodeJPG(self.cur_img)
+        img = await asyncio.to_thread(encodeJPG, self.cur_img)
 
         mask = None
         pose = None
@@ -71,13 +72,13 @@ class Worker:
             pose = pb_json.MessageToDict(
                 self.cur_data.pose_landmarks)['landmark']
             if hasattr(self.cur_data, 'segmentation_mask'):
-                mask = encodeJPG(self.cur_data.segmentation_mask)
+                mask = await asyncio.to_thread(encodeJPG, self.cur_data.segmentation_mask)
 
-        asyncio.create_task(self.wss.broadcast('frame', {
+        await self.wss.broadcast('frame', {
             'img': img,
             'mask': mask,
             'pose': pose
-        }))
+        })
 
     async def _loop(self):
         try:
@@ -86,8 +87,8 @@ class Worker:
                 # bottleneck is opencv image yield rate lmao
                 self.cur_data = self._mp_predict.predict(img)
                 # TODO: lag at higher resolution is from here...
-                # webrtc time? output worker?
-                self._send()
+                # webrtc time? output worker? to_thread() abuse?
+                asyncio.create_task(self._send())
                 if not self.is_open:
                     break
         except KeyboardInterrupt:
@@ -108,10 +109,7 @@ class Worker:
 
         self._mp_predict = create_predictor_worker(
             cfg=self.mp_pose_cfg,
-            # TODO: feels like asyncio has some sort of priority system...
-            # probably will be fixed once openCV is read in another thread instead
-            # after all asyncio doesnt work with non-asyncio blocking io
-            max_fps=self.max_fps*4,
+            max_fps=self.max_fps,
             fps_callback=lambda: rate_bar.update(self.pbar[1], advance=1)
         )
 
@@ -121,6 +119,7 @@ class Worker:
     async def close(self):
         self.is_open = False
         self.cap.release()
+        log.info('Waiting for input & output streams to close...')
         await asyncio.gather(self.loop_task, self.wss.close(), self._mp_predict.close())
 
     async def __aenter__(self):

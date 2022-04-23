@@ -46,11 +46,11 @@ def get_config():
                 cv2_args=[0],
                 cv2_height=320,
                 cv2_width=640,
-                max_fps=30,
+                max_fps=60,
                 wss_host='localhost',
                 wss_port=8080
             ),
-            main_fps=30,
+            main_fps=60,
             no_local_test=False,
         )
         with open('./config.yml', 'w') as f:
