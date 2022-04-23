@@ -1,6 +1,5 @@
 from __future__ import annotations
 from typing import Tuple, Union
-from logging import getLogger
 from dataclasses import dataclass, field
 
 from copy import deepcopy
@@ -13,7 +12,8 @@ from nicepipe.utils import encodeJPG, rlloop
 from nicepipe.rich import rate_bar
 from nicepipe.websocket import WebsocketServer
 
-log = getLogger(__name__)
+import logging
+log = logging.getLogger(__name__)
 
 # TODO:
 # 3 loop types:

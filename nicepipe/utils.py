@@ -1,10 +1,11 @@
 from __future__ import annotations
+from typing import AsyncIterable
+
 import time
 import asyncio
-from typing import AsyncIterable
+from base64 import b64encode
 from numpy import ndarray
 from cv2 import imencode
-from base64 import b64encode
 
 
 async def rlloop(rate, iterator=None, update_func=lambda: 0):

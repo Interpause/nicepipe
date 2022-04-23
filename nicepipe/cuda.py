@@ -1,16 +1,13 @@
-'''Side Effect Only import to force CUDA to load'''
+'''Side-effect import to force CUDA to load'''
 # see https://pyinstaller.org/en/stable/feature-notes.html#solution-in-pyinstaller
 # PyInstaller detects DLL loading from the compiled bytecode, hence DLLs must be
 # imported in a very specific way, leading to some oddities in the code below.
 
-import ctypes
-from pathlib import Path
 import sys
 import os
+import ctypes
+from pathlib import Path
 import nvidia
-import logging
-
-log = logging.getLogger(__name__)
 
 PIP_NVIDIA_PATH = Path(nvidia.__path__[0])
 '''path to pip-installed nvidia folder'''

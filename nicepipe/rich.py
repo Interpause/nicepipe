@@ -1,5 +1,6 @@
-from contextlib import contextmanager
 import logging
+from contextlib import contextmanager
+
 from rich import get_console
 from rich.live import Live
 from rich.layout import Layout

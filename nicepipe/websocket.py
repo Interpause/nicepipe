@@ -1,12 +1,9 @@
 from __future__ import annotations
 from dataclasses import dataclass
 
-import websockets
-import asyncio
 import json
-
-from logging import getLogger
-log = getLogger(__name__)
+import asyncio
+import websockets
 
 
 @dataclass

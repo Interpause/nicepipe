@@ -1,22 +1,21 @@
-import logging
-from rich.prompt import Confirm
-from multiprocessing import freeze_support
-
-import yaml
 import os
 import sys
+import yaml
+
 import cv2
 import asyncio
+from multiprocessing import freeze_support
+from rich.prompt import Confirm
+
 import mediapipe.python.solutions.drawing_utils as mp_drawing
 import mediapipe.python.solutions.drawing_styles as mp_drawing_styles
 import mediapipe.python.solutions.pose as mp_pose
 
-import nicepipe
-from nicepipe import Worker, rlloop
+from nicepipe import Worker, rlloop, __version__
 from nicepipe.rich import enable_fancy_console, rate_bar, layout, live, console
 import nicepipe.uvloop
 
-
+import logging
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 
@@ -28,7 +27,7 @@ CUDA_ENABLED = True
 
 def get_config():
     if not os.path.exists('./config.yml'):
-        log.debug('config.yml not found! creating...')
+        log.warning('config.yml not found! creating...')
         cfg = dict(
             # https://google.github.io/mediapipe/solutions/pose.html#cross-platform-configuration-options
             mp_cfg=dict(
@@ -58,10 +57,13 @@ def get_config():
         )
         with open('./config.yml', 'w') as f:
             yaml.safe_dump(cfg, f)
+            log.warning(
+                'Program will now exit to allow you to edit config.yml.')
+            raise KeyboardInterrupt
 
     with open('./config.yml') as f:
         cfg = yaml.safe_load(f)
-    log.debug('config.yml loaded')
+    log.debug('config.yml loaded:')
     log.debug(cfg)
     logging.getLogger().setLevel(cfg['log_level'])
     return cfg
@@ -69,13 +71,13 @@ def get_config():
 
 async def main(cfg):
     async def restart_live_console():
-        await asyncio.sleep(2)
+        await asyncio.sleep(5)
         console.line(console.height)
-        live.transient = False
+        live.transient = True
         live.start()
     asyncio.create_task(restart_live_console())
 
-    log.info(f":smiley: hewwo world! :eggplant: JHTech's nicepipe [red]v{nicepipe.__version__}[/red]!", extra={
+    log.info(f":smiley: hewwo world! :eggplant: JHTech's nicepipe [red]v{__version__}[/red]!", extra={
              "markup": True, "highlighter": None})
     async with Worker(
         cv2_source=cfg['worker_cfg']['cv2_source'],
@@ -130,6 +132,7 @@ async def main(cfg):
                 if cv2.waitKey(1) & 0xFF == 27:
                     cv2.destroyAllWindows()
                     return
+        layout['Info']['Misc'].update('Nice')
         await worker.join()
 
 

@@ -27,6 +27,7 @@ TODO: Insert planned architecture documentation.
    ```
 
    - Use `poe build-windows-minimal` to exclude Tensorflow & CUDA (since its not currently being used and inflates file size by a lot)
+7. On first run, the server will generate `config.yml` in the same directory. Modifying it requires a server restart.
 
 ## Quirks
 
