@@ -15,7 +15,7 @@ from nicepipe.websocket import WebsocketServer
 
 log = getLogger(__name__)
 
-# TODO: asyncio reduces boilerplate & bugs when doing concurrency
+# TODO:
 # 3 loop types:
 # - Receive loop (source FPS + user-set FPS)
 # - Predict loop (user-set FPS per model) (DONE)
@@ -57,7 +57,6 @@ class Worker:
     async def _recv(self):
         # TODO: use pyAV instead of cv2. support webRTC.
         while self.cap.isOpened() and self.is_open:
-            # TODO: this should timeout to prevent waiting execessively long for the program to interrupt
             success, img = await asyncio.to_thread(self.cap.read)
             if not success:
                 log.warn("Ignoring empty camera frame.")
@@ -69,6 +68,7 @@ class Worker:
 
     async def _send(self):
         # TODO: fyi send webp over wss <<< send video chunks over anything
+        # TODO: lag from encodeJPG is significant at higher res, hence use of to_thread()
 
         img = await asyncio.to_thread(encodeJPG, self.cur_img)
 
@@ -99,8 +99,6 @@ class Worker:
                 self.cur_img = img
                 self.cur_data = self._mp_predict.predict(
                     img, extras)
-                # TODO: lag at higher resolution is from here...
-                # webrtc time? output worker? to_thread() abuse?
                 asyncio.create_task(self._send())
                 if not self.is_open:
                     break
@@ -131,9 +129,10 @@ class Worker:
 
     async def close(self):
         self.is_open = False
-        self.cap.release()
         log.info('Waiting for input & output streams to close...')
         await asyncio.gather(self.loop_task, self.wss.close(), self._mp_predict.close())
+        # should be called last to avoid being stuck in cap.read() & also so cv2.CAP_MSMF warning message doesnt interrupt the debug logs
+        self.cap.release()
 
     async def __aenter__(self):
         await self.open()
