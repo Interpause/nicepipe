@@ -53,6 +53,7 @@ class Worker:
         self.pbar = [rate_bar.add_task("main loop", total=float(
             'inf')), rate_bar.add_task("predict loop", total=float('inf'))]
         self.wss = WebsocketServer(self.wss_host, self.wss_port)
+        self.tasks = []
 
     async def _recv(self):
         # TODO: use pyAV instead of cv2. support webRTC.
@@ -99,7 +100,7 @@ class Worker:
                 self.cur_img = img
                 self.cur_data = self._mp_predict.predict(
                     img, extras)
-                asyncio.create_task(self._send())
+                self.tasks.append(asyncio.create_task(self._send()))
                 if not self.is_open:
                     break
         except KeyboardInterrupt:
@@ -127,10 +128,13 @@ class Worker:
         await asyncio.gather(self.wss.open(), self._mp_predict.open())
         self.loop_task = asyncio.create_task(self._loop())
 
+    async def join(self):
+        await self.loop_task
+
     async def close(self):
         self.is_open = False
         log.info('Waiting for input & output streams to close...')
-        await asyncio.gather(self.loop_task, self.wss.close(), self._mp_predict.close())
+        await asyncio.gather(self.loop_task, *self.tasks, self.wss.close(), self._mp_predict.close())
         # should be called last to avoid being stuck in cap.read() & also so cv2.CAP_MSMF warning message doesnt interrupt the debug logs
         self.cap.release()
 

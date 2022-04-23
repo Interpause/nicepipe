@@ -18,6 +18,7 @@ class WebsocketServer:
 
     def __post_init__(self):
         self.clients = set()
+        self.tasks = []
 
     async def _heartbeat(self, ws):
         while ws.open:
@@ -27,7 +28,7 @@ class WebsocketServer:
     async def _register_client(self, ws):
         self.clients.add(ws)
         try:
-            asyncio.create_task(self._heartbeat(ws))
+            self.tasks.append(asyncio.create_task(self._heartbeat(ws)))
             # while not useful in this context, rate-limiting is possible
             async for msg in ws:
                 try:
@@ -62,7 +63,7 @@ class WebsocketServer:
 
     async def close(self):
         self.wss.close()
-        await asyncio.gather(self.wss.wait_closed())
+        await asyncio.gather(self.wss.wait_closed(), *self.tasks)
 
     async def __aenter__(self):
         await self.open()

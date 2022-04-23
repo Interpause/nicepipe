@@ -130,7 +130,7 @@ async def main(cfg):
                 if cv2.waitKey(1) & 0xFF == 27:
                     cv2.destroyAllWindows()
                     return
-        await worker.loop_task
+        await worker.join()
 
 
 if __name__ == '__main__':

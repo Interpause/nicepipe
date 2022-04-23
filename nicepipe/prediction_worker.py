@@ -90,8 +90,8 @@ class PredictionWorker:
     '''current output'''
     is_closing: bool = False
     '''flag to break loop'''
-    loop_tasks: list = field(default_factory=list)
-    '''loop tasks'''
+    tasks: list = field(default_factory=list)
+    '''tasks'''
 
     # multiprocessing
     process: AioProcess = None
@@ -119,7 +119,7 @@ class PredictionWorker:
             if self.is_closing:
                 break
             output = await self.pipe.coro_recv()
-            create_task(self._set_output(output))
+            self.tasks.append(create_task(self._set_output(output)))
 
     def predict(self, img: ndarray, extra: dict = None):
         '''returns latest prediction & scheldules img & extra for the next'''
@@ -131,12 +131,12 @@ class PredictionWorker:
         self.process = Process(target=self.predictor.begin,
                                args=(child_pipe,), daemon=True)
         self.process.start()
-        self.loop_tasks = [create_task(
+        self.tasks += [create_task(
             self._in_loop()), create_task(self._out_loop())]
 
     async def close(self):
         self.is_closing = True
-        await gather(*self.loop_tasks)
+        await gather(*self.tasks)
         self.process.terminate()
         await self.process.coro_join()
 
