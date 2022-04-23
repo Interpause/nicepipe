@@ -13,7 +13,7 @@ from nicepipe.prediction_worker import BasePredictor, PredictionWorker
 # https://google.github.io/mediapipe/solutions/pose.html#cross-platform-configuration-options
 DEFAULT_MP_POSE_CFG = dict(
     static_image_mode=False,
-    # note all 3 models have to be run at least once to download their files
+    # NOTE: all 3 models have to be run at least once to download their files
     model_complexity=1,  # 0, 1 or 2 (0 or 1 is okay)
     smooth_landmarks=True,
     enable_segmentation=True,

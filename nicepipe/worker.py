@@ -3,6 +3,7 @@ from typing import Tuple, Union
 from dataclasses import dataclass, field
 
 from copy import deepcopy
+from collections import deque
 import cv2
 import asyncio
 import google.protobuf.json_format as pb_json
@@ -53,7 +54,7 @@ class Worker:
         self.pbar = [rate_bar.add_task("main loop", total=float(
             'inf')), rate_bar.add_task("predict loop", total=float('inf'))]
         self.wss = WebsocketServer(self.wss_host, self.wss_port)
-        self.tasks = []
+        self.tasks = deque(maxlen=600)
 
     async def _recv(self):
         # TODO: use pyAV instead of cv2. support webRTC.
@@ -136,7 +137,7 @@ class Worker:
         log.info('Waiting for input & output streams to close...')
         await asyncio.gather(self.loop_task, *self.tasks, self.wss.close(), self._mp_predict.close())
         # should be called last to avoid being stuck in cap.read() & also so cv2.CAP_MSMF warning message doesnt interrupt the debug logs
-        self.cap.release()
+        # self.cap.release()
 
     async def __aenter__(self):
         await self.open()

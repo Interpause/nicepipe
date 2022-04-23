@@ -71,11 +71,12 @@ def get_config():
 
 async def main(cfg):
     async def restart_live_console():
-        await asyncio.sleep(5)
+        '''exists solely to prevent tflite's log messages from interrupting the fancy logs'''
+        await asyncio.sleep(4)
         console.line(console.height)
         live.transient = True
         live.start()
-    asyncio.create_task(restart_live_console())
+    fancy = asyncio.create_task(restart_live_console())
 
     log.info(f":smiley: hewwo world! :eggplant: JHTech's nicepipe [red]v{__version__}[/red]!", extra={
              "markup": True, "highlighter": None})
@@ -132,8 +133,8 @@ async def main(cfg):
                 if cv2.waitKey(1) & 0xFF == 27:
                     cv2.destroyAllWindows()
                     return
-        layout['Info']['Misc'].update('Nice')
-        await worker.join()
+        layout['Info']['Misc'].update('Nice Logs')
+        await asyncio.gather(worker.join(), fancy)
 
 
 if __name__ == '__main__':

@@ -3,8 +3,9 @@ from abc import ABC, abstractmethod
 from typing import Any, Coroutine, Tuple, Callable
 from dataclasses import dataclass, field
 
+from collections import deque
 from numpy import ndarray
-from asyncio import run as async_run, gather, create_task
+from asyncio import Task, run as async_run, gather, create_task
 from aioprocessing import AioConnection as Connection, AioPipe as Pipe, AioProcess as Process
 from aioprocessing.process import AioProcess
 
@@ -90,8 +91,10 @@ class PredictionWorker:
     '''current output'''
     is_closing: bool = False
     '''flag to break loop'''
-    tasks: list = field(default_factory=list)
-    '''tasks'''
+    tasks: deque[Task] = field(default_factory=lambda: deque(maxlen=600))
+    '''deque tracking misc tasks'''
+    loop_task: Task = None
+    '''main task for both IO loops'''
 
     # multiprocessing
     process: AioProcess = None
@@ -131,12 +134,11 @@ class PredictionWorker:
         self.process = Process(target=self.predictor.begin,
                                args=(child_pipe,), daemon=True)
         self.process.start()
-        self.tasks += [create_task(
-            self._in_loop()), create_task(self._out_loop())]
+        self.loop_task = gather(self._in_loop(), self._out_loop())
 
     async def close(self):
         self.is_closing = True
-        await gather(*self.tasks)
+        await gather(self.loop_task, *self.tasks)
         self.process.terminate()
         await self.process.coro_join()
 
