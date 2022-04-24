@@ -45,6 +45,8 @@ class Worker:
     '''size to downscale input to for mediapipe pose'''
     max_fps: int = 30
     '''Max FPS of PredictionWorkers and VideoCapture FPS. PredictionWorkers may exceed input FPS. cv2 rounds down FPS it doesn't support.'''
+    lock_fps: bool = True
+    '''Whether to lock PredictionWorker FPS to input FPS.'''
     wss_host: str = 'localhost'
     wss_port: int = 8080
 
@@ -123,6 +125,7 @@ class Worker:
         self._mp_predict = create_predictor_worker(
             cfg=self.mp_pose_cfg,
             max_fps=self.max_fps,
+            lock_fps_to_input=self.lock_fps,
             fps_callback=lambda: rate_bar.update(self.pbar[1], advance=1)
         )
 

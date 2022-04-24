@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nicepipe"
-version = "0.2.0"
+version = "0.2.1"
 description = "remote worker for video inference"
 license = "Proprietary"
 authors = ["John-Henry Lim <42513874+Interpause@users.noreply.github.com>"]
@@ -71,7 +71,6 @@ opencv-contrib-python = "^4.5.5"
 websockets = "^10.2"
 protobuf = "^3.20.0"
 mediapipe = "^0.8.9.1"
-aioprocessing = "^2.0.0"
 uvloop = {version = "^0.16.0", platform = "linux"}
 tensorflow = "^2.8.0"
 rich = "^12.2.0"

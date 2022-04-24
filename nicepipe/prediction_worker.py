@@ -5,9 +5,9 @@ from dataclasses import dataclass, field
 
 from collections import deque
 from numpy import ndarray
-from asyncio import Task, run as async_run, gather, create_task
-from aioprocessing import AioConnection as Connection, AioPipe as Pipe, AioProcess as Process
-from aioprocessing.process import AioProcess
+from asyncio import Task, run as async_run, gather, create_task, to_thread
+from multiprocessing import Pipe, Process
+from multiprocessing.connection import Connection
 
 from nicepipe.utils import rlloop
 import nicepipe.uvloop  # use uvloop for child process asyncio loop
@@ -51,10 +51,10 @@ class BasePredictor(ABC):
         while True:
             # send & receive concurrently for performance
             # have measured over 1 min averaging period that async is faster
-            input = await self.pipe.coro_recv()
-            results = self.predict(*input)
+            input = await to_thread(self.pipe.recv)
+            results = await to_thread(self.predict, *input)
             # don't await, unlikely to accumulate
-            self.pipe.coro_send(results)
+            create_task(to_thread(self.pipe.send, results))
 
 
 @dataclass
@@ -101,7 +101,7 @@ class PredictionWorker:
     '''Whether to lock prediction rate to input rate.'''
 
     # multiprocessing
-    process: AioProcess = None
+    process: Process = None
     '''child process to run unpack_in, run & prepare_out.'''
     pipe: Connection = None
     '''Connection used to communicate with child process.'''
@@ -119,7 +119,7 @@ class PredictionWorker:
                 prev_num = self.input_num
             input = await self.process_input(*self.current_input)
             # await this or it accumulates
-            await self.pipe.coro_send(input)
+            await to_thread(self.pipe.send, input)
 
     async def _set_output(self, output: Any):
         self.current_output = await self.process_output(output)
@@ -129,7 +129,7 @@ class PredictionWorker:
         async for _ in rlloop(self.max_fps, update_func=self.fps_callback):
             if self.is_closing:
                 break
-            output = await self.pipe.coro_recv()
+            output = await to_thread(self.pipe.recv)
             self.tasks.append(create_task(self._set_output(output)))
 
     def predict(self, img: ndarray, extra: dict = None):
@@ -151,7 +151,7 @@ class PredictionWorker:
         self.is_closing = True
         await gather(self.loop_task, *self.tasks)
         self.process.terminate()
-        await self.process.coro_join()
+        await to_thread(self.process.join)
 
     async def __aenter__(self):
         await self.open()

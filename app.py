@@ -25,6 +25,7 @@ LOCAL_TEST_ENABLED = False
 CUDA_ENABLED = True
 
 
+# TODO: proper config read/write (maybe using omegaconf or hydra) and actually merge defaults or smth
 def get_config():
     if not os.path.exists('./config.yml'):
         log.warning('config.yml not found! creating...')
@@ -49,6 +50,7 @@ def get_config():
                 cv2_size_wh=(1920, 1080),
                 mp_size_wh=(640, 360),
                 max_fps=60,
+                lock_fps=True,
                 wss_host='localhost',
                 wss_port=8080
             ),
@@ -87,6 +89,7 @@ async def main(cfg):
         mp_size_wh=cfg['worker_cfg']['mp_size_wh'],
         mp_pose_cfg=cfg['mp_cfg'],
         max_fps=cfg['worker_cfg']['max_fps'],
+        lock_fps=cfg['worker_cfg']['lock_fps'],
         wss_host=cfg['worker_cfg']['wss_host'],
         wss_port=cfg['worker_cfg']['wss_port'],
     ) as worker:

@@ -75,10 +75,9 @@ class MPPosePredictor(BasePredictor):
         return serialized
 
 
-def create_predictor_worker(cfg: dict = DEFAULT_MP_POSE_CFG, max_fps=30, fps_callback=lambda: 0):
+def create_predictor_worker(cfg: dict = DEFAULT_MP_POSE_CFG, **kwargs):
     return PredictionWorker(MPPosePredictor(cfg),
                             process_input=process_input,
                             process_output=deserialize_mp_results,
-                            max_fps=max_fps,
-                            fps_callback=fps_callback
+                            **kwargs
                             )

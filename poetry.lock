@@ -10,17 +10,6 @@ python-versions = ">=3.6"
 six = "*"
 
 [[package]]
-name = "aioprocessing"
-version = "2.0.0"
-description = "A Python 3.5+ library that integrates the multiprocessing module with asyncio."
-category = "main"
-optional = false
-python-versions = "*"
-
-[package.extras]
-dill = ["multiprocess"]
-
-[[package]]
 name = "altgraph"
 version = "0.17.2"
 description = "Python graph (network) package"
@@ -862,7 +851,6 @@ python-versions = ">=3.6.3,<4.0.0"
 [package.dependencies]
 commonmark = ">=0.9.0,<0.10.0"
 pygments = ">=2.6.0,<3.0.0"
-typing-extensions = {version = ">=4.0.0,<5.0", markers = "python_version < \"3.9\""}
 
 [package.extras]
 jupyter = ["ipywidgets (>=7.5.1,<8.0.0)"]
@@ -1119,17 +1107,13 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 
 [metadata]
 lock-version = "1.1"
-python-versions = ">=3.8,<3.10"
-content-hash = "d07b759393a56307bf3f279407a6e0a65949f0fb0a221f69c5850ec19ffb8660"
+python-versions = ">=3.9,<3.10"
+content-hash = "32d210898147ebed08a10164122ac3af3686db867c5d07f8271b08b0f167d668"
 
 [metadata.files]
 absl-py = [
     {file = "absl-py-1.0.0.tar.gz", hash = "sha256:ac511215c01ee9ae47b19716599e8ccfa746f2e18de72bdf641b79b22afa27ea"},
     {file = "absl_py-1.0.0-py3-none-any.whl", hash = "sha256:84e6dcdc69c947d0c13e5457d056bd43cade4c2393dce00d684aedea77ddc2a3"},
-]
-aioprocessing = [
-    {file = "aioprocessing-2.0.0-py3-none-any.whl", hash = "sha256:00757aa3ae8d99a7e41079d7b5fcdcbb7794b1d454961e8c6601e3d4be63c03f"},
-    {file = "aioprocessing-2.0.0.tar.gz", hash = "sha256:469dfb746e8c4e0c727ba135cfabf9e034c554f6a73c27f908bfe3625dd74b9e"},
 ]
 altgraph = [
     {file = "altgraph-0.17.2-py2.py3-none-any.whl", hash = "sha256:743628f2ac6a7c26f5d9223c91ed8ecbba535f506f4b6f558885a8a56a105857"},
