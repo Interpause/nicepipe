@@ -77,25 +77,25 @@ rich = "^12.2.0"
 click = "^8.1.2"
 PyYAML = "^6.0"
 
-[tool.poetry.group.cuda.dependencies]
-nvidia-cuda-runtime-cu11 = {version = "^2021.12.20", source = "nvidia"}
-nvidia-cublas-cu11 = {version = "^2022.3.24", source = "nvidia"}
-nvidia-cufft-cu11 = {version = "^2022.3.24", source = "nvidia"}
-nvidia-curand-cu11 = {version = "^2022.3.24", source = "nvidia"}
-nvidia-cusolver-cu11 = {version = "^2022.3.24", source = "nvidia"}
-nvidia-cusparse-cu11 = {version = "^2022.3.24", source = "nvidia"}
-nvidia-cudnn = {version = "^8.2.0", source = "nvidia", platform = "linux"}
+# [[tool.poetry.source]]
+# name = "nvidia"
+# url = "https://pypi.ngc.nvidia.com/"
+# secondary = true
+#
+# [tool.poetry.group.cuda.dependencies]
+# nvidia-cuda-runtime-cu11 = {version = "^2021.12.20", source = "nvidia"}
+# nvidia-cublas-cu11 = {version = "^2022.3.24", source = "nvidia"}
+# nvidia-cufft-cu11 = {version = "^2022.3.24", source = "nvidia"}
+# nvidia-curand-cu11 = {version = "^2022.3.24", source = "nvidia"}
+# nvidia-cusolver-cu11 = {version = "^2022.3.24", source = "nvidia"}
+# nvidia-cusparse-cu11 = {version = "^2022.3.24", source = "nvidia"}
+# nvidia-cudnn = {version = "^8.2.0", source = "nvidia", platform = "linux"}
 
 [tool.poetry.group.dev.dependencies]
 poethepoet = "^0.13.1"
 autopep8 = "^1.6.0"
 line-profiler = "^3.5.1"
 pyinstaller = "^4.10"
-
-[[tool.poetry.source]]
-name = "nvidia"
-url = "https://pypi.ngc.nvidia.com/"
-secondary = true
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
