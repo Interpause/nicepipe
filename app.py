@@ -48,6 +48,8 @@ def get_config():
                 # default cv2 capture source on windows has an unsilenceable warning... but dshow (the alternative) lags..
                 cv2_cap_api=cv2.CAP_ANY,
                 cv2_size_wh=(1920, 1080),
+                cv2_enc_flags=[],
+                cv2_enc_format='jpeg',
                 mp_size_wh=(640, 360),
                 max_fps=60,
                 lock_fps=True,
@@ -87,6 +89,8 @@ async def main(cfg):
         cv2_cap_api=cfg['worker_cfg']['cv2_cap_api'],
         cv2_size_wh=cfg['worker_cfg']['cv2_size_wh'],
         mp_size_wh=cfg['worker_cfg']['mp_size_wh'],
+        cv2_enc_flags=cfg['worker_cfg']['cv2_enc_flags'],
+        cv2_enc_format=cfg['worker_cfg']['cv2_enc_format'],
         mp_pose_cfg=cfg['mp_cfg'],
         max_fps=cfg['worker_cfg']['max_fps'],
         lock_fps=cfg['worker_cfg']['lock_fps'],

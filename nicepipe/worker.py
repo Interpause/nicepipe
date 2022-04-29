@@ -9,7 +9,7 @@ import asyncio
 import google.protobuf.json_format as pb_json
 
 from nicepipe.mp_pose import DEFAULT_MP_POSE_CFG, create_predictor_worker
-from nicepipe.utils import encodeJPG, rlloop
+from nicepipe.utils import encodeImg, rlloop
 from nicepipe.rich import rate_bar
 from nicepipe.websocket import WebsocketServer
 
@@ -38,6 +38,10 @@ class Worker:
     '''cv2.VideoCapture API'''
     cv2_size_wh: Tuple[int, int] = (640, 360)
     '''cv2.VideoCapture resolution in width, height'''
+    cv2_enc_format: str = 'jpeg'
+    '''cv2 encode format'''
+    cv2_enc_flags: list = field(default_factory=list)
+    '''cv2 imencode flags'''
     mp_pose_cfg: dict = field(
         default_factory=lambda: deepcopy(DEFAULT_MP_POSE_CFG))
     '''MediaPipe Pose config'''
@@ -49,6 +53,8 @@ class Worker:
     '''Whether to lock PredictionWorker FPS to input FPS.'''
     wss_host: str = 'localhost'
     wss_port: int = 8080
+    queue_len: int = 60
+    '''Max amount of send tasks in queue'''
 
     def __post_init__(self):
         self.cur_data = None
@@ -56,7 +62,7 @@ class Worker:
         self.pbar = [rate_bar.add_task("main loop", total=float(
             'inf')), rate_bar.add_task("predict loop", total=float('inf'))]
         self.wss = WebsocketServer(self.wss_host, self.wss_port)
-        self.tasks = deque(maxlen=600)
+        self.send_tasks = deque()
 
     async def _recv(self):
         # TODO: use pyAV instead of cv2. support webRTC.
@@ -74,7 +80,7 @@ class Worker:
         # TODO: fyi send webp over wss <<< send video chunks over anything
         # TODO: lag from encodeJPG is significant at higher res, hence use of to_thread()
 
-        img = await asyncio.to_thread(encodeJPG, self.cur_img)
+        img = await asyncio.to_thread(encodeImg, self.cur_img, self.cv2_enc_format, opts=self.cv2_enc_flags)
 
         mask = None
         pose = None
@@ -82,7 +88,7 @@ class Worker:
             pose = pb_json.MessageToDict(
                 self.cur_data.pose_landmarks)['landmark']
             if hasattr(self.cur_data, 'segmentation_mask'):
-                mask = await asyncio.to_thread(encodeJPG, self.cur_data.segmentation_mask)
+                mask = await asyncio.to_thread(encodeImg, self.cur_data.segmentation_mask, self.cv2_enc_format, opts=self.cv2_enc_flags)
 
         await self.wss.broadcast('frame', {
             'img': img,
@@ -103,7 +109,14 @@ class Worker:
                 self.cur_img = img
                 self.cur_data = self._mp_predict.predict(
                     img, extras)
-                self.tasks.append(asyncio.create_task(self._send()))
+                self.send_tasks.append(asyncio.create_task(self._send()))
+                while len(self.send_tasks) > self.queue_len:
+                    task = self.send_tasks.popleft()
+                    task.cancel()
+                    try:
+                        await task
+                    except:
+                        pass
                 if not self.is_open:
                     break
         except KeyboardInterrupt:
@@ -138,7 +151,7 @@ class Worker:
     async def close(self):
         self.is_open = False
         log.info('Waiting for input & output streams to close...')
-        await asyncio.gather(self.loop_task, *self.tasks, self.wss.close(), self._mp_predict.close())
+        await asyncio.gather(self.loop_task, *self.send_tasks, self.wss.close(), self._mp_predict.close())
         # should be called last to avoid being stuck in cap.read() & also so cv2.CAP_MSMF warning message doesnt interrupt the debug logs
         # self.cap.release()
 

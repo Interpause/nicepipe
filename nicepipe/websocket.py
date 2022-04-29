@@ -1,7 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
 
-from collections import deque
 import json
 import asyncio
 import websockets
@@ -16,7 +15,7 @@ class WebsocketServer:
 
     def __post_init__(self):
         self.clients = set()
-        self.tasks = deque(maxlen=600)
+        self.tasks = []
 
     async def _heartbeat(self, ws):
         while ws.open:
