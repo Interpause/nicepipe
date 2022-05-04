@@ -7,7 +7,7 @@ import cv2
 from mediapipe.python.solutions.pose import Pose as MpPose
 import mediapipe.framework.formats.landmark_pb2 as landmark_pb2
 
-from nicepipe.prediction_worker import BasePredictor, PredictionWorker
+from .base import BasePredictor, PredictionWorker
 
 
 # https://google.github.io/mediapipe/solutions/pose.html#cross-platform-configuration-options

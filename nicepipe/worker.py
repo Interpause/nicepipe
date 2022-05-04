@@ -8,10 +8,9 @@ import cv2
 import asyncio
 import google.protobuf.json_format as pb_json
 
-from nicepipe.mp_pose import DEFAULT_MP_POSE_CFG, create_predictor_worker
-from nicepipe.utils import encodeImg, rlloop
-from nicepipe.rich import rate_bar
-from nicepipe.websocket import WebsocketServer
+from .predict.mp_pose import DEFAULT_MP_POSE_CFG, create_predictor_worker
+from .utils import encodeImg, rlloop, add_fps_task
+from .api.websocket import WebsocketServer
 
 import logging
 
@@ -60,8 +59,8 @@ class Worker:
         self.cur_data = None
         self.cur_img = None
         self.pbar = [
-            rate_bar.add_task("main loop", total=float("inf")),
-            rate_bar.add_task("predict loop", total=float("inf")),
+            add_fps_task("main loop"),
+            add_fps_task("predict loop"),
         ]
         self.wss = WebsocketServer(self.wss_host, self.wss_port)
         self.send_tasks = deque()
@@ -112,7 +111,7 @@ class Worker:
             async for img in rlloop(
                 self.max_fps,
                 iterator=self._recv(),
-                update_func=lambda: rate_bar.update(self.pbar[0], advance=1),
+                update_func=self.pbar[0],
             ):
                 self.cur_img = img
                 self.cur_data = self._mp_predict.predict(img, extras)
@@ -146,7 +145,7 @@ class Worker:
             cfg=self.mp_pose_cfg,
             max_fps=self.max_fps,
             lock_fps_to_input=self.lock_fps,
-            fps_callback=lambda: rate_bar.update(self.pbar[1], advance=1),
+            fps_callback=self.pbar[1],
         )
 
         await asyncio.gather(self.wss.open(), self._mp_predict.open())

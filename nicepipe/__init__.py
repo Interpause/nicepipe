@@ -8,16 +8,10 @@ configure the worker's behaviour.
 from .worker import *
 from .utils import *
 
-__version__ = "0.2.2"
-
-app = 0
+__version__ = "0.2.3"
 
 
-def main():
-    import uvicorn
+def run():
+    from .__main__ import main
 
-    uvicorn.run(app, host="127.0.0.1", port=5000, log_level="info")
-
-
-if __name__ == "__main__":
     main()

@@ -11,9 +11,9 @@ import mediapipe.python.solutions.drawing_utils as mp_drawing
 import mediapipe.python.solutions.drawing_styles as mp_drawing_styles
 import mediapipe.python.solutions.pose as mp_pose
 
-from nicepipe import Worker, rlloop, __version__
-from nicepipe.rich import enable_fancy_console, rate_bar, layout, live, console
-import nicepipe.uvloop
+from nicepipe import Worker, __version__
+from nicepipe.utils import enable_fancy_console, add_fps_task, update_status, rlloop
+import nicepipe.utils.uvloop
 
 import logging
 
@@ -73,11 +73,11 @@ def get_config():
     return cfg
 
 
-async def main(cfg):
+async def main(cfg, live):
     async def restart_live_console():
         """exists solely to prevent tflite's log messages from interrupting the fancy logs"""
         await asyncio.sleep(4)
-        console.line(console.height)
+        live.console.line(live.console.height)
         live.transient = True
         live.start()
 
@@ -101,12 +101,12 @@ async def main(cfg):
         wss_port=cfg["worker_cfg"]["wss_port"],
     ) as worker:
         if LOCAL_TEST_ENABLED:
-            demo_loop = rate_bar.add_task("demo loop", total=float("inf"))
+            demo_loop = add_fps_task("demo loop")
 
             async for results, img in rlloop(
                 cfg["main_fps"],
                 iterator=worker.next(),
-                update_func=lambda: rate_bar.update(demo_loop, advance=1),
+                update_func=demo_loop,
             ):
                 if img is None:
                     continue
@@ -125,18 +125,18 @@ async def main(cfg):
                             )
 
                             if abs(dy) < 0.2:
-                                layout["Info"]["Misc"].update(
+                                update_status(
                                     f"arm up, left_elbow: {landmarks.landmark[mp_pose.PoseLandmark.LEFT_ELBOW].y}, left_wrist: {landmarks.landmark[mp_pose.PoseLandmark.LEFT_WRIST].y}"
                                 )
 
                             else:
-                                layout["Info"]["Misc"].update(
+                                update_status(
                                     f"arm down, left_elbow: {landmarks.landmark[mp_pose.PoseLandmark.LEFT_ELBOW].y}, left_wrist: {landmarks.landmark[mp_pose.PoseLandmark.LEFT_WRIST].y}"
                                 )
                         else:
-                            layout["Info"]["Misc"].update("arm out of bounds")
+                            update_status("arm out of bounds")
                     else:
-                        layout["Info"]["Misc"].update("no human")
+                        update_status("no human")
 
                     img.flags.writeable = True
                     mp_drawing.draw_landmarks(
@@ -151,15 +151,14 @@ async def main(cfg):
                 if cv2.waitKey(1) & 0xFF == 27:
                     cv2.destroyAllWindows()
                     return
-        layout["Info"]["Misc"].update("Nice Logs")
+        update_status("Nice Logs")
         await asyncio.gather(worker.join(), fancy)
 
 
 if __name__ == "__main__":
     freeze_support()  # needed on windows for multiprocessing
-    with enable_fancy_console():
+    with enable_fancy_console(start_live=False) as live:
         try:
-            live.stop()
             if sys.platform.startswith("win"):
                 log.warning(
                     "Windows detected! Disable Windows Game Mode else worker will lag when not in foreground!"
@@ -168,14 +167,14 @@ if __name__ == "__main__":
             cfg = get_config()
 
             try:
-                import nicepipe.cuda  # noqa
+                import nicepipe.utils.cuda  # noqa
 
                 if not cfg["no_local_test"]:
                     if Confirm.ask("Run CUDA Test?", default=False):
                         import tensorflow as tf  # noqa
 
                         # import torch # torch.cuda.is_available()
-                        log.debug(f"DLLs loaded: {nicepipe.cuda.dlls}")
+                        log.debug(f"DLLs loaded: {nicepipe.utils.cuda.dlls}")
                         log.info(
                             f'Torch CUDA: disabled, Tensorflow CUDA: {len(tf.config.list_physical_devices("GPU")) > 0}'
                         )
@@ -188,7 +187,7 @@ if __name__ == "__main__":
             if not cfg["no_local_test"]:
                 LOCAL_TEST_ENABLED = Confirm.ask("Run Local Test?", default=False)
 
-            asyncio.run(main(cfg))
+            asyncio.run(main(cfg, live))
         except KeyboardInterrupt:
             pass
         finally:

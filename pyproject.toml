@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nicepipe"
-version = "0.2.2"
+version = "0.2.3"
 description = "remote worker for video inference"
 license = "Proprietary"
 authors = ["John-Henry Lim <42513874+Interpause@users.noreply.github.com>"]
@@ -22,7 +22,7 @@ pyinstaller app.py \
 --collect-data mediapipe \
 --exclude-module uvloop \
 --exclude-module tensorflow \
---exclude-module nicepipe.cuda\
+--exclude-module nicepipe.utils.cuda\
 """
 build-windows = """\
 pyinstaller app.py \
@@ -76,6 +76,7 @@ rich = "^12.2.0"
 blacksheep = "^1.2.6"
 uvicorn = {extras = ["standard"], version = "^0.17.6"}
 hydra-core = "^1.1.2"
+PySide6 = "^6.3.0"
 
 [tool.poetry.group.dev.dependencies]
 poethepoet = "^0.13.1"

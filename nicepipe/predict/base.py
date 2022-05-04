@@ -1,3 +1,4 @@
+"""Base/template for predictors."""
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Coroutine, Tuple, Callable
@@ -9,8 +10,8 @@ from asyncio import Task, run as async_run, gather, create_task, to_thread
 from multiprocessing import Pipe, Process
 from multiprocessing.connection import Connection
 
-from nicepipe.utils import rlloop
-import nicepipe.uvloop  # use uvloop for child process asyncio loop
+from ..utils import rlloop
+import nicepipe.utils.uvloop  # use uvloop for child process asyncio loop
 
 
 async def passthrough(*args):
