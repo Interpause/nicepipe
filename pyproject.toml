@@ -76,6 +76,7 @@ rich = "^12.2.0"
 blacksheep = "^1.2.6"
 uvicorn = {extras = ["standard"], version = "^0.17.6"}
 hydra-core = "^1.1.2"
+dearpygui = "^1.6.1"
 
 [tool.poetry.group.dev.dependencies]
 poethepoet = "^0.13.1"
