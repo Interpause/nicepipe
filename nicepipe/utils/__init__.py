@@ -21,7 +21,6 @@ __all__ = [
 
 async def rlloop(rate, iterator=None, update_func=lambda: 0):
     """rate-limited loop in Hz. Loop is infinite if iterator is None."""
-    t = time.perf_counter()
 
     is_async = isinstance(iterator, AsyncIterable)
     if is_async:
@@ -30,14 +29,20 @@ async def rlloop(rate, iterator=None, update_func=lambda: 0):
         # set iterator to be infinite if None
         iterator = iter(int, 1) if iterator is None else iterator.__iter__()
 
+    p = 1.0 / rate
+    t = 0
     while True:
+        t = time.perf_counter()
         try:
             i = (await iterator.__anext__()) if is_async else iterator.__next__()
         except (StopIteration, StopAsyncIteration):
             break
-        await asyncio.sleep(max(1e-3, 1.0 / rate + t - time.perf_counter()))
-        t = time.perf_counter()
+
         update_func()
+        await asyncio.sleep(max(1e-3, p - time.perf_counter() + t))
+        # yield comes after the time measurement
+        # might be how async loops work, but i found that including yield
+        # into the time measurement roughly doubles FPS
         yield i
 
 
