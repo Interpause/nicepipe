@@ -10,7 +10,7 @@ from cv2 import imencode
 
 
 async def rlloop(rate, iterator=None, update_func=lambda: 0):
-    '''rate-limited loop in Hz. Loop is infinite if iterator is None.'''
+    """rate-limited loop in Hz. Loop is infinite if iterator is None."""
     t = time.perf_counter()
 
     is_async = isinstance(iterator, AsyncIterable)
@@ -25,10 +25,11 @@ async def rlloop(rate, iterator=None, update_func=lambda: 0):
             i = (await iterator.__anext__()) if is_async else iterator.__next__()
         except (StopIteration, StopAsyncIteration):
             break
-        await asyncio.sleep(max(1e-3, 1./rate + t - time.perf_counter()))
+        await asyncio.sleep(max(1e-3, 1.0 / rate + t - time.perf_counter()))
         t = time.perf_counter()
         update_func()
         yield i
+
 
 # opencv options available for encoding
 # https://docs.opencv.org/3.4/d8/d6a/group__imgcodecs__flags.html#ga292d81be8d76901bff7988d18d2b42ac
@@ -39,13 +40,12 @@ async def rlloop(rate, iterator=None, update_func=lambda: 0):
 
 
 def encodeImg(im: ndarray, format: str, b64=True, opts=[]) -> str:
-    '''Encodes image using opencv into string safe for sending.'''
-    _, enc = imencode(f'.{format}', im, opts)
-    data = b64encode(enc).decode(
-        'ascii') if b64 else quote_from_bytes(enc.tobytes())
+    """Encodes image using opencv into string safe for sending."""
+    _, enc = imencode(f".{format}", im, opts)
+    data = b64encode(enc).decode("ascii") if b64 else quote_from_bytes(enc.tobytes())
     return f'data:image/{format}{";base64" if b64 else ""},{data}'
 
 
 def encodeJPG(im: ndarray) -> str:
-    '''Uses opencv to encode ndarray img into base64 jpg. Opencv default is 95% quality & compression level 1 (fastest).'''
-    return encodeImg(im, 'jpg')
+    """Uses opencv to encode ndarray img into base64 jpg. Opencv default is 95% quality & compression level 1 (fastest)."""
+    return encodeImg(im, "jpg")

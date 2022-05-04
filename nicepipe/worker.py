@@ -14,6 +14,7 @@ from nicepipe.rich import rate_bar
 from nicepipe.websocket import WebsocketServer
 
 import logging
+
 log = logging.getLogger(__name__)
 
 # TODO:
@@ -30,37 +31,38 @@ log = logging.getLogger(__name__)
 
 @dataclass
 class Worker:
-    '''worker receives videos & outputs predictions'''
+    """worker receives videos & outputs predictions"""
 
     cv2_source: Union[int, str] = 0
-    '''cv2.VideoCapture source'''
+    """cv2.VideoCapture source"""
     cv2_cap_api: int = cv2.CAP_ANY
-    '''cv2.VideoCapture API'''
+    """cv2.VideoCapture API"""
     cv2_size_wh: Tuple[int, int] = (640, 360)
-    '''cv2.VideoCapture resolution in width, height'''
-    cv2_enc_format: str = 'jpeg'
-    '''cv2 encode format'''
+    """cv2.VideoCapture resolution in width, height"""
+    cv2_enc_format: str = "jpeg"
+    """cv2 encode format"""
     cv2_enc_flags: list = field(default_factory=list)
-    '''cv2 imencode flags'''
-    mp_pose_cfg: dict = field(
-        default_factory=lambda: deepcopy(DEFAULT_MP_POSE_CFG))
-    '''MediaPipe Pose config'''
+    """cv2 imencode flags"""
+    mp_pose_cfg: dict = field(default_factory=lambda: deepcopy(DEFAULT_MP_POSE_CFG))
+    """MediaPipe Pose config"""
     mp_size_wh: Tuple[int, int] = (640, 360)
-    '''size to downscale input to for mediapipe pose'''
+    """size to downscale input to for mediapipe pose"""
     max_fps: int = 30
-    '''Max FPS of PredictionWorkers and VideoCapture FPS. PredictionWorkers may exceed input FPS. cv2 rounds down FPS it doesn't support.'''
+    """Max FPS of PredictionWorkers and VideoCapture FPS. PredictionWorkers may exceed input FPS. cv2 rounds down FPS it doesn't support."""
     lock_fps: bool = True
-    '''Whether to lock PredictionWorker FPS to input FPS.'''
-    wss_host: str = 'localhost'
+    """Whether to lock PredictionWorker FPS to input FPS."""
+    wss_host: str = "localhost"
     wss_port: int = 8080
     queue_len: int = 60
-    '''Max amount of send tasks in queue'''
+    """Max amount of send tasks in queue"""
 
     def __post_init__(self):
         self.cur_data = None
         self.cur_img = None
-        self.pbar = [rate_bar.add_task("main loop", total=float(
-            'inf')), rate_bar.add_task("predict loop", total=float('inf'))]
+        self.pbar = [
+            rate_bar.add_task("main loop", total=float("inf")),
+            rate_bar.add_task("predict loop", total=float("inf")),
+        ]
         self.wss = WebsocketServer(self.wss_host, self.wss_port)
         self.send_tasks = deque()
 
@@ -80,21 +82,23 @@ class Worker:
         # TODO: fyi send webp over wss <<< send video chunks over anything
         # TODO: lag from encodeJPG is significant at higher res, hence use of to_thread()
 
-        img = await asyncio.to_thread(encodeImg, self.cur_img, self.cv2_enc_format, opts=self.cv2_enc_flags)
+        img = await asyncio.to_thread(
+            encodeImg, self.cur_img, self.cv2_enc_format, opts=self.cv2_enc_flags
+        )
 
         mask = None
         pose = None
         if not self.cur_data is None:
-            pose = pb_json.MessageToDict(
-                self.cur_data.pose_landmarks)['landmark']
-            if hasattr(self.cur_data, 'segmentation_mask'):
-                mask = await asyncio.to_thread(encodeImg, self.cur_data.segmentation_mask, self.cv2_enc_format, opts=self.cv2_enc_flags)
+            pose = pb_json.MessageToDict(self.cur_data.pose_landmarks)["landmark"]
+            if hasattr(self.cur_data, "segmentation_mask"):
+                mask = await asyncio.to_thread(
+                    encodeImg,
+                    self.cur_data.segmentation_mask,
+                    self.cv2_enc_format,
+                    opts=self.cv2_enc_flags,
+                )
 
-        await self.wss.broadcast('frame', {
-            'img': img,
-            'mask': mask,
-            'pose': pose
-        })
+        await self.wss.broadcast("frame", {"img": img, "mask": mask, "pose": pose})
 
     async def _loop(self):
         # NOTE: dont modify extra downstream else it will affect this one
@@ -103,12 +107,15 @@ class Worker:
         # popping on that dict downstream, ocassionally it carries over to
         # the next loop?
         # I know Python does object caching... am I hitting the limits?
-        extras = {'downscale_size': self.mp_size_wh}
+        extras = {"downscale_size": self.mp_size_wh}
         try:
-            async for img in rlloop(self.max_fps, iterator=self._recv(), update_func=lambda: rate_bar.update(self.pbar[0], advance=1)):
+            async for img in rlloop(
+                self.max_fps,
+                iterator=self._recv(),
+                update_func=lambda: rate_bar.update(self.pbar[0], advance=1),
+            ):
                 self.cur_img = img
-                self.cur_data = self._mp_predict.predict(
-                    img, extras)
+                self.cur_data = self._mp_predict.predict(img, extras)
                 self.send_tasks.append(asyncio.create_task(self._send()))
                 while len(self.send_tasks) > self.queue_len:
                     task = self.send_tasks.popleft()
@@ -139,7 +146,7 @@ class Worker:
             cfg=self.mp_pose_cfg,
             max_fps=self.max_fps,
             lock_fps_to_input=self.lock_fps,
-            fps_callback=lambda: rate_bar.update(self.pbar[1], advance=1)
+            fps_callback=lambda: rate_bar.update(self.pbar[1], advance=1),
         )
 
         await asyncio.gather(self.wss.open(), self._mp_predict.open())
@@ -150,8 +157,10 @@ class Worker:
 
     async def close(self):
         self.is_open = False
-        log.info('Waiting for input & output streams to close...')
-        await asyncio.gather(self.loop_task, *self.send_tasks, self.wss.close(), self._mp_predict.close())
+        log.info("Waiting for input & output streams to close...")
+        await asyncio.gather(
+            self.loop_task, *self.send_tasks, self.wss.close(), self._mp_predict.close()
+        )
         # should be called last to avoid being stuck in cap.read() & also so cv2.CAP_MSMF warning message doesnt interrupt the debug logs
         # self.cap.release()
 

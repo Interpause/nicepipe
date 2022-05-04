@@ -8,8 +8,9 @@ import websockets
 
 @dataclass
 class WebsocketServer:
-    '''object-based wrapper around websockets'''
-    host: str = 'localhost'
+    """object-based wrapper around websockets"""
+
+    host: str = "localhost"
     port: int = 8080
     heartbeat_interval: int = 1
 
@@ -19,7 +20,7 @@ class WebsocketServer:
 
     async def _heartbeat(self, ws):
         while ws.open:
-            await self.send_client(ws, 'pong', None)
+            await self.send_client(ws, "pong", None)
             await asyncio.sleep(self.heartbeat_interval)
 
     async def _register_client(self, ws):
@@ -40,10 +41,7 @@ class WebsocketServer:
 
     async def send_client(self, ws, event, obj):
         try:
-            await ws.send(json.dumps({
-                'event': event,
-                'data': obj
-            }))
+            await ws.send(json.dumps({"event": event, "data": obj}))
         except websockets.ConnectionClosed:
             pass
 
@@ -52,9 +50,7 @@ class WebsocketServer:
 
     async def open(self):
         self.wss = await websockets.serve(
-            ws_handler=self._register_client,
-            host=self.host,
-            port=self.port
+            ws_handler=self._register_client, host=self.host, port=self.port
         )
         await self.wss.start_serving()
 
