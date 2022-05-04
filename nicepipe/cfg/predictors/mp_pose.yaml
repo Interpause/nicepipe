@@ -1,0 +1,13 @@
+mp_pose:
+  # https://google.github.io/mediapipe/solutions/pose.html#cross-platform-configuration-options
+  cfg:
+    static_image_mode: false
+    model_complexity: 1
+    smooth_landmarks: true
+    enable_segmentation: false
+    smooth_segmentation: true
+    min_detection_confidence: 0.7
+    min_tracking_confidence: 0.3
+  downscale_wh: [640, 360]
+  max_fps: 60
+  lock_fps: true

@@ -1,0 +1,36 @@
+# https://hydra.cc/docs/next/advanced/defaults_list/
+defaults:
+  - _self_
+  # predictors to use
+  - predictors:
+      - mp_pose
+  # config for hydra behaviour
+  - hydra: base_hydra
+
+# DearPyGUI viewport config
+viewport:
+  title: nicepipe
+  width: 600
+  height: 400
+
+# nicepipe.Worker config
+worker:
+  # https://docs.opencv.org/4.5.5/d8/dfe/classcv_1_1VideoCapture.html
+  cv2_cap_cfg:
+    source: 0
+    api: 0
+    size_wh: [1920, 1080]
+    fps: 30
+  # https://docs.opencv.org/4.5.5/d4/da8/group__imgcodecs.html
+  cv2_enc_cfg:
+    format: jpeg
+    flags: []
+  # nicepipe.api.WebsocketServer
+  wss_cfg:
+    host: localhost
+    port: 8080
+  predictors: ${predictors}
+
+misc:
+  # disable annoying prompts like "Test CUDA?"
+  skip_tests: False

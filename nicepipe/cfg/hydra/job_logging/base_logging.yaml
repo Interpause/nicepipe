@@ -1,0 +1,18 @@
+version: 1
+formatters:
+  log_fmt:
+    format: '[%(asctime)s][%(name)s][%(levelname)s] - %(message)s'
+handlers:
+  console:
+    class: rich.logging.RichHandler
+    rich_tracebacks: true
+  file:
+    class: logging.FileHandler
+    mode: w
+    formatter: log_fmt
+    filename: main.log
+    delay: true
+root:
+  handlers: [console, file]
+
+disable_existing_loggers: false

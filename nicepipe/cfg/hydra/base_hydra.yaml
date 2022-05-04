@@ -1,0 +1,14 @@
+# https://hydra.cc/docs/configure_hydra/intro/
+defaults:
+  - override help: base_help
+  - override job_logging: base_logging
+
+# name of per-run folders
+run:
+  dir: logs/${now:%Y%m%d%H%M%S}
+
+# which loggers to allow logging.DEBUG for
+# remember, logger inheritance is a thing
+verbose:
+  - __main__
+  - nicepipe

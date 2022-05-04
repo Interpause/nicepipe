@@ -1,0 +1,4 @@
+mp_pose:
+  cfg:
+    static_image_mode: true
+    model_complexity: 2

@@ -27,20 +27,24 @@ TODO: Insert planned architecture documentation.
    ```
 
    - Use `poe build-windows-minimal` to exclude Tensorflow & CUDA (since its not currently being used and inflates file size by a lot)
-7. On first run, the server will generate `config.yml` in the same directory. Modifying it requires a server restart.
+~7. On first run, the server will generate `config.yml` in the same directory. Modifying it requires a server restart.~
 
 ## Quirks
 
 Through hacks and obscurity, I utilize a secret Nvidia Wheel Repository, which just so happens to have Windows builds of the CUDA runtime (besides Linux of course). Unfortunately, specifically for cuDNN, there are only Linux wheels available. Hence the _Windows Only_ step.
 
-Another quirk is that Nvidia didn't bother to load the DLLs in their wheels. I wrote a workaround. **`import nicepipe.cuda` must be run before `import tensorflow`!**.
+Another quirk is that Nvidia didn't bother to load the DLLs in their wheels. I wrote a workaround. **`import nicepipe.utils.cuda` must be run before `import tensorflow`!**.
 
 The workaround is actually a side-effect import designed not only to load CUDA successfully, but also to be detectable by `PyInstaller` such that the required DLLs are copied and linked.
 
-On Linux, while `nicepipe.cuda` works in development, and `PyInstaller` correctly detects the CUDA DLLs, the executable cannot properly be built. Even openCV cannot properly bundle in qt. My guess is my unique system configuration might be messing with `PyInstaller`'s DLL detection. It might also be that on Linux, specifying additional paths in the build command might be insufficient, and instead these paths must be specified in `LD_LIBRARY_PATH`, which can fortunately be done via `poethepoet`. That said, building for Linux isn't supported.
+On Linux, while `nicepipe.utils.cuda` works in development, and `PyInstaller` correctly detects the CUDA DLLs, the executable cannot properly be built. Even openCV cannot properly bundle in qt. My guess is my unique system configuration might be messing with `PyInstaller`'s DLL detection. It might also be that on Linux, specifying additional paths in the build command might be insufficient, and instead these paths must be specified in `LD_LIBRARY_PATH`, which can fortunately be done via `poethepoet`. That said, building for Linux isn't supported.
 
 ### Lots of Error messages on Keyboard Interrupt
 
-I already tried to resolve most of them. There is one caused by `poethepoet` (<https://github.com/nat-n/poethepoet/issues/42>) that can be bypassed by running `python app.py` directly. See <https://stackoverflow.com/questions/70399670/how-to-shutdown-gracefully-on-keyboard-interrupt-when-an-asyncio-task-is-perform> about the rest.
+I already tried to resolve most of them. There is one caused by `poethepoet` (<https://github.com/nat-n/poethepoet/issues/42>) that can be bypassed by running its commands directly. See <https://stackoverflow.com/questions/70399670/how-to-shutdown-gracefully-on-keyboard-interrupt-when-an-asyncio-task-is-perform> about the rest.
 
 I have ensured at least that the Worker can start and stop without error messages. KeyboardInterrupt is a bit more iffy.
+
+### Cannot Build
+
+it is currently known that PyInstaller cannot build Hydra successfully even with `--collect-all`. I do not have the patience to debug this and write the required hook. There isn't an issue for this on either PyInstaller or Hydra Github Issues page. For now, Hydra-based configuration has to be branched out until I obtain a fix.

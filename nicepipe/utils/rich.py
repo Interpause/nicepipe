@@ -66,19 +66,21 @@ live = Live(layout, console=console, refresh_per_second=10, transient=True)
 
 
 @contextmanager
-def enable_fancy_console(start_live=True):
+def enable_fancy_console(start_live=True, use_hydra=True):
     """Globally takes over print(), logging and the console to be fancier using Rich."""
 
     console.quiet = False
 
-    logging.basicConfig(
-        # don't need to change as RichHandler adds its own defaults over it
-        # level=logging.DEBUG,
-        format="%(message)s",
-        datefmt="[%X]",
-        handlers=[RichHandler(rich_tracebacks=True, console=console)],
-        force=True,
-    )
+    # don't use when using hydra to configure logging
+    if not use_hydra:
+        logging.basicConfig(
+            # don't need to change as RichHandler adds its own defaults over it
+            # level=logging.DEBUG,
+            format="%(message)s",
+            datefmt="[%X]",
+            handlers=[RichHandler(rich_tracebacks=True, console=console)],
+            force=True,
+        )
 
     try:
         if start_live:

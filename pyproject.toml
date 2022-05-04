@@ -21,6 +21,7 @@ pyinstaller nicepipe\\__main__.py \
 --onefile \
 --collect-data mediapipe \
 --collect-data nicepipe \
+--collect-all hydra \
 --exclude-module uvloop \
 --exclude-module tensorflow \
 --exclude-module nicepipe.utils.cuda\
@@ -33,6 +34,7 @@ pyinstaller app.py \
 --onefile \
 --collect-data mediapipe \
 --collect-data nicepipe \
+--collect-data hydra \
 --exclude-module uvloop \
 --paths cudnn\\bin \
 --paths cudnn\\dll_x64 \
@@ -57,6 +59,7 @@ pyinstaller app.py \
 --onefile \
 --collect-data mediapipe \
 --collect-data nicepipe \
+--collect-data hydra \
 --paths .venv/lib/site-packages/nvidia/cublas/lib \
 --paths .venv/lib/site-packages/nvidia/cuda_runtime/lib \
 --paths .venv/lib/site-packages/nvidia/cudnn/lib \

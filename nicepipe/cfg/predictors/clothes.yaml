@@ -1,0 +1,8 @@
+clothes:
+  cfg:
+    labels:
+      - a
+      - b
+      - c
+    nms: 0.7
+    confidence: 0.5
