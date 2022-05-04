@@ -1,14 +1,17 @@
 from __future__ import annotations
-from typing import Tuple, Union
-from dataclasses import dataclass, field
+from typing import Tuple
+from dataclasses import dataclass
 
-from copy import deepcopy
 from collections import deque
 import cv2
 import asyncio
-import google.protobuf.json_format as pb_json
 
-from .predict.mp_pose import DEFAULT_MP_POSE_CFG, create_predictor_worker
+from omegaconf import DictConfig
+
+from .predict.mp_pose import (
+    create_predictor_worker,
+    prep_send_mp_results,
+)
 from .utils import encodeImg, rlloop, add_fps_task
 from .api.websocket import WebsocketServer
 
@@ -29,41 +32,57 @@ log = logging.getLogger(__name__)
 
 
 @dataclass
+class cv2CapCfg:
+    """https://docs.opencv.org/4.5.5/d8/dfe/classcv_1_1VideoCapture.html"""
+
+    source: str | int
+    """cv2.VideoCapture source"""
+    api: int
+    """cv2.VideoCapture API"""
+    size_wh: Tuple[int, int]
+    """cv2.VideoCapture resolution in width, height"""
+    fps: int
+    """cv2.VideoCapture fps"""
+
+
+@dataclass
+class cv2EncCfg:
+    """https://docs.opencv.org/4.5.5/d4/da8/group__imgcodecs.html"""
+
+    format: str
+    """cv2 encode format"""
+    flags: list[int]
+    """cv2 imencode flags"""
+
+
+@dataclass
+class wssCfg:
+    """nicepipe.api.websocket"""
+
+    host: str
+    port: int
+
+
+@dataclass
 class Worker:
     """worker receives videos & outputs predictions"""
 
-    cv2_source: Union[int, str] = 0
-    """cv2.VideoCapture source"""
-    cv2_cap_api: int = cv2.CAP_ANY
-    """cv2.VideoCapture API"""
-    cv2_size_wh: Tuple[int, int] = (640, 360)
-    """cv2.VideoCapture resolution in width, height"""
-    cv2_enc_format: str = "jpeg"
-    """cv2 encode format"""
-    cv2_enc_flags: list = field(default_factory=list)
-    """cv2 imencode flags"""
-    mp_pose_cfg: dict = field(default_factory=lambda: deepcopy(DEFAULT_MP_POSE_CFG))
-    """MediaPipe Pose config"""
-    mp_size_wh: Tuple[int, int] = (640, 360)
-    """size to downscale input to for mediapipe pose"""
-    max_fps: int = 30
-    """Max FPS of PredictionWorkers and VideoCapture FPS. PredictionWorkers may exceed input FPS. cv2 rounds down FPS it doesn't support."""
-    lock_fps: bool = True
-    """Whether to lock PredictionWorker FPS to input FPS."""
-    wss_host: str = "localhost"
-    wss_port: int = 8080
+    predictors: DictConfig
+    cv2_cap_cfg: cv2CapCfg
+    cv2_enc_cfg: cv2EncCfg
+    wss_cfg: wssCfg
+
     queue_len: int = 60
     """Max amount of send tasks in queue"""
 
     def __post_init__(self):
-        self.cur_data = None
+        self.cur_data = {}
         self.cur_img = None
-        self.pbar = [
-            add_fps_task("main loop"),
-            add_fps_task("predict loop"),
-        ]
-        self.wss = WebsocketServer(self.wss_host, self.wss_port)
-        self.send_tasks = deque()
+        self.pbar = {k: add_fps_task(f"predict:{k}") for k in self.predictors}
+        self.pbar["main"] = add_fps_task("main loop")
+        self.wss = WebsocketServer(**self.wss_cfg)
+        self.send_tasks = deque()  # dont limit deque, custom clearing behaviour
+        self._encode = lambda im: encodeImg(im, **self.cv2_enc_cfg)
 
     async def _recv(self):
         # TODO: use pyAV instead of cv2. support webRTC.
@@ -81,48 +100,49 @@ class Worker:
         # TODO: fyi send webp over wss <<< send video chunks over anything
         # TODO: lag from encodeJPG is significant at higher res, hence use of to_thread()
 
-        img = await asyncio.to_thread(
-            encodeImg, self.cur_img, self.cv2_enc_format, opts=self.cv2_enc_flags
-        )
+        img = await asyncio.to_thread(self._encode, self.cur_img)
 
-        mask = None
-        pose = None
-        if not self.cur_data is None:
-            pose = pb_json.MessageToDict(self.cur_data.pose_landmarks)["landmark"]
-            if hasattr(self.cur_data, "segmentation_mask"):
-                mask = await asyncio.to_thread(
-                    encodeImg,
-                    self.cur_data.segmentation_mask,
-                    self.cv2_enc_format,
-                    opts=self.cv2_enc_flags,
-                )
+        # TODO: HOW TO NOT HARDCODE THIS???
+        mp_pose = None
+        if "mp_pose" in self.cur_data:
+            mp_pose = await prep_send_mp_results(
+                self.cur_data["mp_pose"], img_encoder=self._encode
+            )
 
-        await self.wss.broadcast("frame", {"img": img, "mask": mask, "pose": pose})
+        await self.wss.broadcast("frame", {"img": img, "mp_pose": mp_pose})
+
+    async def _clear_queue(self):
+        """Clear queued up websocket send tasks to prevent memory leak."""
+        while len(self.send_tasks) > self.queue_len:
+            task = self.send_tasks.popleft()
+            task.cancel()
+            try:
+                await task
+            except:
+                pass
 
     async def _loop(self):
-        # NOTE: dont modify extra downstream else it will affect this one
+        # NOTE: dont modify extras downstream else it will affect this one
         # but interestingly enough...
         # even if i create a new dict each time (e.g. predict(img, {...}))
         # popping on that dict downstream, ocassionally it carries over to
         # the next loop?
         # I know Python does object caching... am I hitting the limits?
-        extras = {"downscale_size": self.mp_size_wh}
         try:
             async for img in rlloop(
-                self.max_fps,
+                self.cv2_cap_cfg.fps * 2,  # doesnt matter cause we await read()
                 iterator=self._recv(),
-                update_func=self.pbar[0],
+                update_func=self.pbar["main"],
             ):
                 self.cur_img = img
-                self.cur_data = self._mp_predict.predict(img, extras)
+
+                for name, cfg in self.predictors.items():
+                    self.cur_data[name] = self._predict[name].predict(
+                        img, {"downscale_size": cfg.downscale_wh}
+                    )
+
                 self.send_tasks.append(asyncio.create_task(self._send()))
-                while len(self.send_tasks) > self.queue_len:
-                    task = self.send_tasks.popleft()
-                    task.cancel()
-                    try:
-                        await task
-                    except:
-                        pass
+                await self._clear_queue()
                 if not self.is_open:
                     break
         except KeyboardInterrupt:
@@ -136,19 +156,25 @@ class Worker:
         self.is_open = True
 
         # cv2 VideoCapture
-        self.cap = cv2.VideoCapture(self.cv2_source, self.cv2_cap_api)
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.cv2_size_wh[0])
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.cv2_size_wh[1])
-        self.cap.set(cv2.CAP_PROP_FPS, self.max_fps)
+        self.cap = cv2.VideoCapture(self.cv2_cap_cfg.source, self.cv2_cap_cfg.api)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.cv2_cap_cfg.size_wh[0])
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.cv2_cap_cfg.size_wh[1])
+        self.cap.set(cv2.CAP_PROP_FPS, self.cv2_cap_cfg.fps)
 
-        self._mp_predict = create_predictor_worker(
-            cfg=self.mp_pose_cfg,
-            max_fps=self.max_fps,
-            lock_fps_to_input=self.lock_fps,
-            fps_callback=self.pbar[1],
+        # TODO: how to not hardcode this?? Instantiate?
+        self._predict = {}
+        if "mp_pose" in self.predictors:
+            mp_pose_cfg = self.predictors.mp_pose
+            self._predict["mp_pose"] = create_predictor_worker(
+                cfg=mp_pose_cfg.cfg,
+                max_fps=mp_pose_cfg.max_fps,
+                lock_fps_to_input=mp_pose_cfg.lock_fps,
+                fps_callback=self.pbar["mp_pose"],
+            )
+
+        await asyncio.gather(
+            self.wss.open(), *[p.open() for p in self._predict.values()]
         )
-
-        await asyncio.gather(self.wss.open(), self._mp_predict.open())
         self.loop_task = asyncio.create_task(self._loop())
 
     async def join(self):
@@ -158,10 +184,13 @@ class Worker:
         self.is_open = False
         log.info("Waiting for input & output streams to close...")
         await asyncio.gather(
-            self.loop_task, *self.send_tasks, self.wss.close(), self._mp_predict.close()
+            self.loop_task,
+            *self.send_tasks,
+            self.wss.close(),
+            *[p.close() for p in self._predict.values()],
         )
         # should be called last to avoid being stuck in cap.read() & also so cv2.CAP_MSMF warning message doesnt interrupt the debug logs
-        # self.cap.release()
+        self.cap.release()
 
     async def __aenter__(self):
         await self.open()

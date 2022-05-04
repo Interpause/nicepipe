@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nicepipe"
-version = "0.2.3"
+version = "0.3.0"
 description = "remote worker for video inference"
 license = "Proprietary"
 authors = ["John-Henry Lim <42513874+Interpause@users.noreply.github.com>"]
@@ -14,12 +14,13 @@ readme = "README.md"
 # See https://github.com/python-poetry/poetry/issues/2543
 install-torch = "pip install torch==1.11.0+cu115 torchvision==0.12.0+cu115 -f https://download.pytorch.org/whl/torch_stable.html"
 build-windows-minimal = """\
-pyinstaller app.py \
+pyinstaller nicepipe\\__main__.py \
 --name nicepipe \
 --icon nicepipe.ico \
 --noconfirm \
 --onefile \
 --collect-data mediapipe \
+--collect-data nicepipe \
 --exclude-module uvloop \
 --exclude-module tensorflow \
 --exclude-module nicepipe.utils.cuda\
@@ -31,6 +32,7 @@ pyinstaller app.py \
 --noconfirm \
 --onefile \
 --collect-data mediapipe \
+--collect-data nicepipe \
 --exclude-module uvloop \
 --paths cudnn\\bin \
 --paths cudnn\\dll_x64 \
@@ -54,6 +56,7 @@ pyinstaller app.py \
 --noconfirm \
 --onefile \
 --collect-data mediapipe \
+--collect-data nicepipe \
 --paths .venv/lib/site-packages/nvidia/cublas/lib \
 --paths .venv/lib/site-packages/nvidia/cuda_runtime/lib \
 --paths .venv/lib/site-packages/nvidia/cudnn/lib \
@@ -62,7 +65,7 @@ pyinstaller app.py \
 --paths .venv/lib/site-packages/nvidia/cusolver/lib \
 --paths .venv/lib/site-packages/nvidia/cusparse/lib\
 """
-dev = "python app.py"
+dev = "python -m nicepipe"
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.10"

@@ -4,11 +4,15 @@ Being a remote worker, a client can connect to multiple workers, and workers can
 send predictions to multiple clients. A single client can act as the master and 
 configure the worker's behaviour.
 """
+from multiprocessing import freeze_support
+
+# needed on windows for multiprocessing
+freeze_support()
 
 from .worker import *
 from .utils import *
 
-__version__ = "0.2.3"
+__version__ = "0.3.0"
 
 
 def run():

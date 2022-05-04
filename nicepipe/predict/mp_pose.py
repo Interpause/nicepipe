@@ -1,14 +1,16 @@
 from __future__ import annotations
+from types import SimpleNamespace
 from typing import NamedTuple
 from dataclasses import dataclass
+import asyncio
 
-from types import SimpleNamespace
 import cv2
 from mediapipe.python.solutions.pose import Pose as MpPose
 import mediapipe.framework.formats.landmark_pb2 as landmark_pb2
+import google.protobuf.json_format as pb_json
 
 from .base import BasePredictor, PredictionWorker
-
+from ..utils import encodeJPG
 
 # https://google.github.io/mediapipe/solutions/pose.html#cross-platform-configuration-options
 DEFAULT_MP_POSE_CFG = dict(
@@ -55,6 +57,17 @@ async def deserialize_mp_results(results: dict):
         return None
     else:
         return SimpleNamespace(**obj)
+
+
+async def prep_send_mp_results(results: SimpleNamespace, img_encoder=encodeJPG):
+    """prepare mp results for sending over network"""
+    mask = None
+    pose = None
+    if not results is None:
+        pose = pb_json.MessageToDict(results.pose_landmarks)["landmark"]
+        if hasattr(results, "segmentation_mask"):
+            mask = await asyncio.to_thread(img_encoder, results.segmentation_mask)
+    return {"mask": mask, "pose": pose}
 
 
 @dataclass

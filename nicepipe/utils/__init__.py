@@ -54,9 +54,9 @@ async def rlloop(rate, iterator=None, update_func=lambda: 0):
 # - sending video chunks will always be more efficient cause videos only deal with differences between frames
 
 
-def encodeImg(im: ndarray, format: str, b64=True, opts=[]) -> str:
+def encodeImg(im: ndarray, format: str, b64=True, flags=[]) -> str:
     """Encodes image using opencv into string safe for sending."""
-    _, enc = imencode(f".{format}", im, opts)
+    _, enc = imencode(f".{format}", im, flags)
     data = b64encode(enc).decode("ascii") if b64 else quote_from_bytes(enc.tobytes())
     return f'data:image/{format}{";base64" if b64 else ""},{data}'
 
