@@ -82,10 +82,11 @@ class predictionWorkerCfg:
 class PredictionWorker:
     """Worker to manage running models in a separate process.
 
-    \nExecution pipeline:
-    \n1. __call__ -> process_input -> Predictor
-    \n2. Predictor -> predict -> main thread
-    \n3. main thread -> process_output -> return
+    Execution pipeline:
+
+    1. __call__ -> process_input -> Predictor
+    2. Predictor -> predict -> main thread
+    3. main thread -> process_output -> return
     """
 
     predictor: BasePredictor

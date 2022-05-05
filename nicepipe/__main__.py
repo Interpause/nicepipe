@@ -1,6 +1,6 @@
 from __future__ import annotations
-import os
 import sys
+import os
 import logging
 import asyncio
 
@@ -17,7 +17,7 @@ import mediapipe.python.solutions.pose as mp_pose
 
 import nicepipe.utils.uvloop
 from nicepipe.cfg import get_config
-from nicepipe.utils import enable_fancy_console, add_fps_task, rlloop
+from nicepipe.utils import enable_fancy_console, add_fps_task, rlloop, change_cwd
 from nicepipe.gui import create_gui
 from nicepipe.worker import Worker
 
@@ -36,7 +36,7 @@ def prompt_test_cuda():
                 import tensorflow as tf  # noqa
 
                 # import torch # torch.cuda.is_available()
-                log.debug(f"DLLs:\n{nicepipe.utils.cuda.DLLs}")
+                log.debug(f"DLLs:\t{nicepipe.utils.cuda.DLLs}")
                 log.info(
                     f'Torch CUDA: disabled, Tensorflow CUDA: {len(tf.config.list_physical_devices("GPU")) > 0}'
                 )
@@ -94,24 +94,27 @@ async def loop(cfg: DictConfig):
 # compose app config using both builtin and external config groups
 
 
-def main(cfg: DictConfig = None):
+def main(cfg: DictConfig):
     try:
         from nicepipe import __version__  # only way to avoid cyclic dependency
 
-        with enable_fancy_console(start_live=False) as live:
-            logging.getLogger("nicepipe").setLevel(logging.DEBUG)
-            log.setLevel(logging.DEBUG)
-            if cfg is None:
-                cfg = get_config()
-
-            logging.getLogger().setLevel(cfg.misc.log_level)
-
+        with enable_fancy_console(
+            start_live=False, log_level=cfg.misc.log_level
+        ) as live:
             global rich_live_display
             rich_live_display = live
+
+            # nicepipe & __main__ logs are more important to see
+            logging.getLogger("nicepipe").setLevel(logging.DEBUG)
+            log.setLevel(logging.DEBUG)
+
             log.info(
                 f":smiley: hewwo world! :eggplant: JHTech's nicepipe [red]v{__version__}[/red]!",
                 extra={"markup": True, "highlighter": None},
             )
+
+            log.debug(f"Config:\t{cfg}")
+            log.debug(f"Cwd: {os.getcwd()}")
 
             if sys.platform.startswith("win"):
                 log.warning(
@@ -122,14 +125,25 @@ def main(cfg: DictConfig = None):
                 prompt_test_cuda()
 
             asyncio.run(loop(cfg))
-    except KeyboardInterrupt:
-        pass
     finally:
         log.info("Stopped!")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        cfg = get_config()
+        if cfg.misc.save_logs:
+            with change_cwd():
+                main(cfg)
+        else:
+            main(cfg)
+    except KeyboardInterrupt:
+        pass
+    except Exception as e:
+        log.error(e)
+    finally:
+        input("Press enter to continue...")
+
 
 # TODO: Given HydraConf wont work. Test omegaConf first. then write using omegaConf a shallow shadow of Hydra (similar to Odyssey lmao)
 # At least for the next version of Odyssey, given portable trainers arent in scope yet, Hydra can be used.

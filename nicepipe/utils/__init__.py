@@ -7,7 +7,7 @@ from base64 import b64encode
 from urllib.parse import quote_from_bytes
 from numpy import ndarray
 from cv2 import imencode
-from .rich import add_fps_task, update_status, enable_fancy_console
+from .logging import add_fps_task, update_status, enable_fancy_console, change_cwd
 
 __all__ = [
     "rlloop",
@@ -16,6 +16,7 @@ __all__ = [
     "add_fps_task",
     "update_status",
     "enable_fancy_console",
+    "change_cwd",
 ]
 
 

@@ -12,10 +12,10 @@ freeze_support()
 from .worker import *
 from .utils import *
 
-__version__ = "0.3.1"
+__version__ = "0.3.2"
 
 
-def run():
+def run(cfg):
     from .__main__ import main
 
-    main()
+    main(cfg)
