@@ -53,7 +53,9 @@ async def deserialize_mp_results(results: dict, **_):
         # create protobuf message
         pose_landmarks = landmark_pb2.NormalizedLandmarkList()
         # load contents into message...
-        pose_landmarks.ParseFromString(results["pose_landmarks"])
+        await asyncio.to_thread(
+            pose_landmarks.ParseFromString, results["pose_landmarks"]
+        )
         # yeah google why is Protobuf so user-unfriendly
         obj["pose_landmarks"] = pose_landmarks
     if "segmentation_mask" in results:
@@ -70,7 +72,9 @@ async def prep_send_mp_results(results: SimpleNamespace, img_encoder=encodeJPG, 
     mask = None
     pose = None
     if not results is None:
-        pose = pb_json.MessageToDict(results.pose_landmarks)["landmark"]
+        pose = (await asyncio.to_thread(pb_json.MessageToDict, results.pose_landmarks))[
+            "landmark"
+        ]
         if hasattr(results, "segmentation_mask"):
             mask = await asyncio.to_thread(img_encoder, results.segmentation_mask)
     return {"mask": mask, "pose": pose}
@@ -100,7 +104,7 @@ def create_prediction_worker(
     async def process_input(img, **extra):
         if scale_wh is None:
             return img, extra
-        return cv2.resize(img, scale_wh), extra
+        return await asyncio.to_thread(cv2.resize, img, scale_wh), extra
 
     return PredictionWorker(
         MPPosePredictor(cfg),

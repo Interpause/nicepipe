@@ -1,9 +1,11 @@
 from __future__ import annotations
+from collections import deque
 import sys
 import os
 import logging
 import asyncio
 
+import numpy as np
 from omegaconf import OmegaConf, DictConfig
 from omegaconf.errors import OmegaConfBaseException
 
@@ -17,7 +19,13 @@ import mediapipe.python.solutions.pose as mp_pose
 
 import nicepipe.utils.uvloop
 from nicepipe.cfg import get_config
-from nicepipe.utils import enable_fancy_console, add_fps_task, rlloop, change_cwd
+from nicepipe.utils import (
+    enable_fancy_console,
+    add_fps_task,
+    rlloop,
+    change_cwd,
+    trim_task_queue,
+)
 from nicepipe.gui import create_gui
 from nicepipe.worker import Worker
 
@@ -36,7 +44,7 @@ def prompt_test_cuda():
                 import tensorflow as tf  # noqa
 
                 # import torch # torch.cuda.is_available()
-                log.debug(f"DLLs:\t{nicepipe.utils.cuda.DLLs}")
+                log.debug(f"DLLs: {nicepipe.utils.cuda.DLLs}")
                 log.info(
                     f'Torch CUDA: disabled, Tensorflow CUDA: {len(tf.config.list_physical_devices("GPU")) > 0}'
                 )
@@ -52,40 +60,74 @@ async def resume_live_display():
     rich_live_display.start()
 
 
+async def gui_loop(imbuffer):
+    gui_loop = add_fps_task("gui loop")
+    with create_gui() as render:
+        with dpg.texture_registry(show=True):
+            dpg.add_raw_texture(
+                imbuffer.shape[1],
+                imbuffer.shape[0],
+                imbuffer,
+                tag="cam_texture",
+                format=dpg.mvFormat_Float_rgb,
+            )
+
+        with dpg.window(label="Cam", tag="cam"):
+            dpg.add_image("cam_texture")
+        dpg.set_primary_window("cam", True)
+        dpg.set_viewport_vsync(False)
+
+        async for _ in rlloop(60, update_func=gui_loop):
+            render()
+            if not dpg.is_dearpygui_running():
+                break
+
+
 async def loop(cfg: DictConfig):
     async with Worker(**cfg.worker) as worker:
-        demo_loop = add_fps_task("gui loop")
+        vid_loop = add_fps_task("video loop")
+        resume_task = asyncio.create_task(resume_live_display())
 
-        asyncio.create_task(resume_live_display())
-        async for results, img in rlloop(
-            60,
-            iterator=worker.next(),
-            update_func=demo_loop,
-        ):
-            if img is None:
-                continue
+        w, h = cfg.worker.cv2_cap.size_wh
+        # HWC, RGBA, float32
+        imbuffer = np.zeros((h, w, 3), dtype=np.float32)
+        gui_task = asyncio.create_task(gui_loop(imbuffer))
+
+        def update_imbuffer(results, img):
+            imbuffer[...] = img[..., ::-1] / 255
             mp_results = results.get("mp_pose")
             if not mp_results is None:
-                img.flags.writeable = True
                 mp_drawing.draw_landmarks(
-                    img,
+                    imbuffer,
                     mp_results.pose_landmarks,
                     mp_pose.POSE_CONNECTIONS,
                     landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style(),
                 )
 
-            # Flip the image horizontally for a selfie-view display.
-            cv2.imshow("MediaPipe Pose", cv2.flip(img, 1))
-            if cv2.waitKey(1) & 0xFF == 27:
-                cv2.destroyAllWindows()
+        tasks = deque()
+        async for results, img in rlloop(
+            cfg.worker.cv2_cap.fps, iterator=worker.next(), update_func=vid_loop
+        ):
+            if not dpg.is_dearpygui_running():
                 break
-        rich_live_display.stop()
+            if img is None:
+                continue
+            tasks.append(
+                asyncio.create_task(asyncio.to_thread(update_imbuffer, results, img))
+            )
+            await trim_task_queue(tasks, 30)
+
+        try:
+            resume_task.cancel()
+            await resume_task
+        except:
+            pass
+        finally:
+            rich_live_display.stop()
+
+        await gui_task
 
     # uvicorn.run(app, host="127.0.0.1", port=5000, log_level="info")
-    # with create_gui():
-    #     while dpg.is_dearpygui_running():
-    #         dpg.render_dearpygui_frame()
-    #         return
 
 
 # TODO: Configuration System
@@ -113,7 +155,7 @@ def main(cfg: DictConfig):
                 extra={"markup": True, "highlighter": None},
             )
 
-            log.debug(f"Config:\t{cfg}")
+            log.debug(f"Config: {cfg}")
             log.debug(f"Cwd: {os.getcwd()}")
 
             if sys.platform.startswith("win"):

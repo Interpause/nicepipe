@@ -13,6 +13,8 @@ from rich.logging import RichHandler
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn, ProgressColumn
 
+# imported just to be excluded from logging
+import asyncio
 
 console = get_console()
 """fancy Rich console, please call enable_fancy_console() to fully utilize"""
@@ -121,6 +123,7 @@ def enable_fancy_console(start_live=True, log_level=logging.DEBUG):
         rich_tracebacks=True,
         log_time_format="[%X]",
         console=console,
+        tracebacks_suppress=[asyncio],
     )
     rich.setFormatter(Formatter(fmt="%(message)s", datefmt="[%X]"))
     rich.addFilter(filter_by_logger(log_level))
@@ -155,7 +158,7 @@ def change_cwd(path="logs", pattern="%Y%m%d%H%M%S", log_name="main.log"):
         )
         file_handler.setFormatter(
             Formatter(
-                fmt="[%(asctime)s][%(levelname)s][%(name)s]: %(message)s",
+                fmt="[%(asctime)s][%(levelname)s][%(name)s] %(message)s",
                 datefmt="%Y%m%d%H%M%S",
             )
         )

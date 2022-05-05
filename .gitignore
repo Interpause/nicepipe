@@ -156,3 +156,5 @@ cython_debug/
 
 # auto-generated config file
 /config.yml
+# logs folder
+/logs

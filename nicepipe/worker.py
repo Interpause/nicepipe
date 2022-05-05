@@ -9,7 +9,7 @@ import asyncio
 from .predict import predictCfg
 from .predict.mp_pose import create_prediction_worker
 
-from .utils import encodeImg, rlloop, add_fps_task
+from .utils import encodeImg, rlloop, add_fps_task, trim_task_queue
 from .api.websocket import WebsocketServer
 
 import logging
@@ -115,19 +115,6 @@ class Worker(workerCfg):
 
         await self._wss.broadcast("frame", {"img": img, **preds})
 
-    async def _clear_queue(self):
-        """Clear queued up websocket send tasks to prevent memory leak."""
-        tasks = []
-        while len(self._send_tasks) > self._queue_len:
-            task = self._send_tasks.popleft()
-            task.cancel()
-            tasks.append(task)
-
-        try:
-            await asyncio.gather(*tasks, return_exceptions=True)
-        except:
-            pass
-
     async def _loop(self):
         # NOTE: dont modify extra downstream else it will affect this one
         # but interestingly enough...
@@ -147,7 +134,8 @@ class Worker(workerCfg):
                     self._cur_data[name] = predictor.predict(img)
 
                 self._send_tasks.append(asyncio.create_task(self._send()))
-                await self._clear_queue()
+                # Clear queued up websocket send tasks to prevent memory leak.
+                await trim_task_queue(self._send_tasks, self._queue_len)
                 if not self._is_open:
                     break
         except KeyboardInterrupt:

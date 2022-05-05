@@ -1,8 +1,9 @@
 from __future__ import annotations
-from typing import AsyncIterable
+from typing import AsyncIterable, Deque
 
 import time
 import asyncio
+from asyncio import Task
 from base64 import b64encode
 from urllib.parse import quote_from_bytes
 from numpy import ndarray
@@ -13,6 +14,7 @@ __all__ = [
     "rlloop",
     "encodeJPG",
     "encodeImg",
+    "trim_task_queue",
     "add_fps_task",
     "update_status",
     "enable_fancy_console",
@@ -45,6 +47,17 @@ async def rlloop(rate, iterator=None, update_func=lambda: 0):
         # might be how async loops work, but i found that including yield
         # into the time measurement roughly doubles FPS
         yield i
+
+
+async def trim_task_queue(tasks: Deque[Task], maxlen: int):
+    """Clear queued up tasks which may have gotten stuck."""
+    popped = []
+    while len(tasks) > maxlen:
+        task = tasks.popleft()
+        task.cancel()
+        popped.append(task)
+
+    return await asyncio.gather(*popped, return_exceptions=True)
 
 
 # opencv options available for encoding
