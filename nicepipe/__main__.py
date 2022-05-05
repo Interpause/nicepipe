@@ -4,8 +4,8 @@ import os
 import logging
 import asyncio
 
-import cv2
-from omegaconf import DictConfig
+from omegaconf import OmegaConf, DictConfig
+from omegaconf.errors import OmegaConfBaseException
 
 # import uvicorn
 import dearpygui.dearpygui as dpg
@@ -134,13 +134,17 @@ if __name__ == "__main__":
         cfg = get_config()
         if cfg.misc.save_logs:
             with change_cwd():
+                OmegaConf.save(cfg, "config.yml")
                 main(cfg)
         else:
             main(cfg)
     except KeyboardInterrupt:
         pass
-    except Exception as e:
+    # stacktrace for omegaconf errors is useless
+    except OmegaConfBaseException as e:
         log.error(e)
+    except Exception as e:
+        log.error(e, exc_info=e)
     finally:
         input("Press enter to continue...")
 
