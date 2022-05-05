@@ -1,10 +1,9 @@
 """Base/template for predictors."""
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Any, Coroutine, Tuple, Callable
+from typing import Any, Generic, Protocol, Tuple, Callable, TypeVar, Union
 from dataclasses import dataclass, field
 
-from collections import deque
 from numpy import ndarray
 from asyncio import Task, run as async_run, gather, create_task, to_thread
 from multiprocessing import Pipe, Process
@@ -13,10 +12,16 @@ from multiprocessing.connection import Connection
 from ..utils import rlloop
 import nicepipe.utils.uvloop  # use uvloop for child process asyncio loop
 
+IT = TypeVar("IT")
+OT = TypeVar("OT")
+JSONPrimitives = Union[int, str, dict, list, tuple]
 
-async def passthrough(*args):
-    """placeholder async passthrough function"""
-    return args
+
+class CallableWithExtra(Generic[IT, OT], Protocol):
+    """placeholder async function & type for functions that take kwargs"""
+
+    async def __call__(self, input: IT, **extra) -> OT:
+        return input, extra
 
 
 class BasePredictor(ABC):
@@ -28,7 +33,7 @@ class BasePredictor(ABC):
         pass
 
     @abstractmethod
-    def predict(self, img: ndarray, extra: dict) -> Any:
+    def predict(self, img: ndarray, **extra) -> Any:
         """Receives img & extra and returns results in a picklable format."""
         pass
 
@@ -52,10 +57,25 @@ class BasePredictor(ABC):
         while True:
             # send & receive concurrently for performance
             # have measured over 1 min averaging period that async is faster
-            input = await to_thread(self.pipe.recv)
-            results = await to_thread(self.predict, *input)
+            img, extra = await to_thread(self.pipe.recv)
+            results = await to_thread(self.predict, img, **extra)
             # don't await, unlikely to accumulate
             create_task(to_thread(self.pipe.send, results))
+
+
+@dataclass
+class predictionWorkerCfg:
+    """
+    The serializable portions of PredictionWorker that can be configured.\n
+    Necessary to declare this duplicate to ensure serializability and
+    because of quirks with dataclass inheritance.
+    """
+
+    # fps related
+    max_fps: int = 60
+    """max io rate of Predictor in Hz"""
+    lock_fps: bool = True
+    """Whether to lock prediction rate to input rate."""
 
 
 @dataclass
@@ -72,16 +92,24 @@ class PredictionWorker:
     """predictor used"""
 
     # data processing
-    process_input: Callable[[ndarray, dict], Coroutine[Tuple[ndarray, dict]]] = field(
-        default=passthrough
+    process_input: CallableWithExtra[ndarray, Tuple[ndarray, dict]] = field(
+        default_factory=CallableWithExtra
     )
     """Used for input preprocessing on the main thread, notably ensuring input is picklable."""
-    process_output: Callable[[Any], Coroutine[Any]] = field(default=passthrough)
+    process_output: CallableWithExtra[Any, Any] = field(
+        default_factory=CallableWithExtra
+    )
     """Used for output postprocessing in the child process, notably deserializing output."""
+    clean_output: CallableWithExtra[Any, JSONPrimitives] = field(
+        default_factory=CallableWithExtra
+    )
+    """Used to ensure output can be JSON serialized at least."""
 
     # fps related
     max_fps: int = 30
     """max io rate of Predictor in Hz"""
+    lock_fps: bool = True
+    """Whether to lock prediction rate to input rate."""
     fps_callback: Callable = field(default=lambda: 0)
     """function to call every loop, useful for debugging."""
 
@@ -92,14 +120,10 @@ class PredictionWorker:
     """current output"""
     is_closing: bool = False
     """flag to break loop"""
-    tasks: deque[Task] = field(default_factory=lambda: deque(maxlen=600))
-    """deque tracking misc tasks"""
     loop_task: Task = None
     """main task for both IO loops"""
     input_num: int = 0
     """Number of unique inputs so far, used to limit prediction by input rate."""
-    lock_fps_to_input: bool = True
-    """Whether to lock prediction rate to input rate."""
 
     # multiprocessing
     process: Process = None
@@ -116,14 +140,13 @@ class PredictionWorker:
             # limit fps by input rate, also handily skips initial None input
             if self.input_num == prev_num:
                 continue
-            if self.lock_fps_to_input:
+            if self.lock_fps:
                 prev_num = self.input_num
-            input = await self.process_input(*self.current_input)
+
+            data, extra = self.current_input
+            input = await self.process_input(data, **extra)
             # await this or it accumulates
             await to_thread(self.pipe.send, input)
-
-    async def _set_output(self, output: Any):
-        self.current_output = await self.process_output(output)
 
     async def _out_loop(self):
         """loop for receiving outputs from child process"""
@@ -131,17 +154,16 @@ class PredictionWorker:
             if self.is_closing:
                 break
             output = await to_thread(self.pipe.recv)
-            self.tasks.append(create_task(self._set_output(output)))
+            self.current_output = await self.process_output(output)
 
-    def predict(self, img: ndarray, extra: dict = None):
+    def predict(self, img: ndarray, **extra):
         """returns latest prediction & scheldules img & extra for the next"""
-        new_input = (img, {} if extra is None else extra)
         if (
             self.current_input is None
             or not img is self.current_input[0]
             or extra != self.current_input[1]
         ):
-            self.current_input = new_input
+            self.current_input = (img, extra)
             self.input_num += 1
         return self.current_output
 
@@ -155,7 +177,7 @@ class PredictionWorker:
 
     async def close(self):
         self.is_closing = True
-        await gather(self.loop_task, *self.tasks)
+        await self.loop_task
         self.process.terminate()
         await to_thread(self.process.join)
 

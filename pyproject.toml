@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nicepipe"
-version = "0.3.0"
+version = "0.3.1"
 description = "remote worker for video inference"
 license = "Proprietary"
 authors = ["John-Henry Lim <42513874+Interpause@users.noreply.github.com>"]
@@ -78,7 +78,7 @@ tensorflow = "^2.8.0"
 rich = "^12.2.0"
 blacksheep = "^1.2.6"
 uvicorn = {extras = ["standard"], version = "^0.17.6"}
-hydra-core = "^1.1.2"
+omegaconf = "^2.2.0"
 dearpygui = "^1.6.1"
 
 [tool.poetry.group.dev.dependencies]

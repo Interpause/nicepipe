@@ -372,18 +372,6 @@ python-versions = ">=3.5.0"
 test = ["Cython (>=0.29.24,<0.30.0)"]
 
 [[package]]
-name = "hydra-core"
-version = "1.1.2"
-description = "A framework for elegantly configuring complex applications"
-category = "main"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-antlr4-python3-runtime = "4.8"
-omegaconf = ">=2.1.0,<2.2.0"
-
-[[package]]
 name = "idna"
 version = "3.3"
 description = "Internationalized Domain Names in Applications (IDNA)"
@@ -583,7 +571,7 @@ signedtoken = ["cryptography (>=3.0.0)", "pyjwt (>=2.0.0,<3)"]
 
 [[package]]
 name = "omegaconf"
-version = "2.1.2"
+version = "2.2.0"
 description = "A flexible configuration library"
 category = "main"
 optional = false
@@ -1156,7 +1144,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.9,<3.10"
-content-hash = "7a403f7db1aba971a154000f906214d36a90326ba42d7f63607f1ae51689aafd"
+content-hash = "35228e20955c82bca26a65ef4e932bb0c5f061f67c4d9dc58124c4d7f21152ea"
 
 [metadata.files]
 absl-py = [
@@ -1455,10 +1443,6 @@ httptools = [
     {file = "httptools-0.4.0-cp39-cp39-win_amd64.whl", hash = "sha256:34d2903dd2a3dd85d33705b6fde40bf91fc44411661283763fd0746723963c83"},
     {file = "httptools-0.4.0.tar.gz", hash = "sha256:2c9a930c378b3d15d6b695fb95ebcff81a7395b4f9775c4f10a076beb0b2c1ff"},
 ]
-hydra-core = [
-    {file = "hydra-core-1.1.2.tar.gz", hash = "sha256:168313397c38375db6eee1e943beaa86f743310bb3dc474d1fe0835ebc690715"},
-    {file = "hydra_core-1.1.2-py3-none-any.whl", hash = "sha256:967fff142a44d635d85adf98881a34cb54d2ff6ff2133acc7a14fa87c57adf35"},
-]
 idna = [
     {file = "idna-3.3-py3-none-any.whl", hash = "sha256:84d9dd047ffa80596e0f246e2eab0b391788b0503584e8945f2368256d2735ff"},
     {file = "idna-3.3.tar.gz", hash = "sha256:9d643ff0a55b762d5cdb124b8eaa99c66322e2157b69160bc32796e824360e6d"},
@@ -1718,8 +1702,8 @@ oauthlib = [
     {file = "oauthlib-3.2.0.tar.gz", hash = "sha256:23a8208d75b902797ea29fd31fa80a15ed9dc2c6c16fe73f5d346f83f6fa27a2"},
 ]
 omegaconf = [
-    {file = "omegaconf-2.1.2-py3-none-any.whl", hash = "sha256:2ae9cbbc1105991da5301b7a0ac8b960958c311239bb2dfd4e3f5e60d2a51029"},
-    {file = "omegaconf-2.1.2.tar.gz", hash = "sha256:35b347cda95e8ced224179a7059c216b1f38f363812847bd6c856be76936151d"},
+    {file = "omegaconf-2.2.0-py3-none-any.whl", hash = "sha256:61ade5dbc667cb51d290e8f5e7d54850ebf145f14dddf81222123bab5f0f7bc1"},
+    {file = "omegaconf-2.2.0.tar.gz", hash = "sha256:5d07815213292256db9cacd8920b9f565a0bfc64b42620456120ac393f0eda6a"},
 ]
 opencv-contrib-python = [
     {file = "opencv-contrib-python-4.5.5.64.tar.gz", hash = "sha256:c4ff7cb9c856af521982b54602707a61f8dae8cc28f5949bf1e3d0453d08a9f0"},

@@ -1,7 +1,7 @@
 from __future__ import annotations
+from typing import Optional, Tuple
 from types import SimpleNamespace
-from typing import NamedTuple
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import asyncio
 
 import cv2
@@ -9,28 +9,34 @@ from mediapipe.python.solutions.pose import Pose as MpPose
 import mediapipe.framework.formats.landmark_pb2 as landmark_pb2
 import google.protobuf.json_format as pb_json
 
-from .base import BasePredictor, PredictionWorker
+from .base import BasePredictor, PredictionWorker, predictionWorkerCfg
 from ..utils import encodeJPG
 
-# https://google.github.io/mediapipe/solutions/pose.html#cross-platform-configuration-options
-DEFAULT_MP_POSE_CFG = dict(
-    static_image_mode=False,
-    # NOTE: all 3 models have to be run at least once to download their files
-    model_complexity=1,  # 0, 1 or 2 (0 or 1 is okay)
-    smooth_landmarks=True,
-    enable_segmentation=True,
-    smooth_segmentation=True,
-    min_detection_confidence=0.5,
-    min_tracking_confidence=0.5,
-)
+
+@dataclass
+class mpPoseCfg:
+    """
+    See https://google.github.io/mediapipe/solutions/pose.html#cross-platform-configuration-options.
+
+    NOTE: All 3 model complexities have to be run at least once to download their files.
+    """
+
+    static_image_mode: bool = False
+    model_complexity: int = 1
+    smooth_landmarks: bool = True
+    enable_segmentation: bool = True
+    smooth_segmentation: bool = True
+    min_detection_confidence: float = 0.5
+    min_tracking_confidence: float = 0.5
 
 
-async def process_input(img, extra):
-    res = extra.get("downscale_size", (640, 360))
-    return cv2.resize(img, res), {}
+@dataclass
+class mpPoseWorkerCfg(predictionWorkerCfg):
+    cfg: mpPoseCfg = field(default_factory=mpPoseCfg)
+    scale_wh: Optional[Tuple[int, int]] = (640, 360)
 
 
-def serialize_mp_results(results: NamedTuple):
+def serialize_mp_results(results: SimpleNamespace):
     obj = {}
     if not results.pose_landmarks is None:
         obj["pose_landmarks"] = results.pose_landmarks.SerializeToString()
@@ -41,7 +47,7 @@ def serialize_mp_results(results: NamedTuple):
     return obj
 
 
-async def deserialize_mp_results(results: dict):
+async def deserialize_mp_results(results: dict, **_):
     obj = {}
     if "pose_landmarks" in results:
         # create protobuf message
@@ -59,7 +65,7 @@ async def deserialize_mp_results(results: dict):
         return SimpleNamespace(**obj)
 
 
-async def prep_send_mp_results(results: SimpleNamespace, img_encoder=encodeJPG):
+async def prep_send_mp_results(results: SimpleNamespace, img_encoder=encodeJPG, **_):
     """prepare mp results for sending over network"""
     mask = None
     pose = None
@@ -81,17 +87,25 @@ class MPPosePredictor(BasePredictor):
     def cleanup(self):
         self.mpp.close()
 
-    def predict(self, img, extra):
+    def predict(self, img, **_):
         img = img[..., ::-1]  # BGR to RGB
         results = self.mpp.process(img)
         serialized = serialize_mp_results(results)
         return serialized
 
 
-def create_predictor_worker(cfg: dict = DEFAULT_MP_POSE_CFG, **kwargs):
+def create_prediction_worker(
+    cfg=mpPoseCfg(), scale_wh=mpPoseWorkerCfg.scale_wh, **kwargs
+):
+    async def process_input(img, **extra):
+        if scale_wh is None:
+            return img, extra
+        return cv2.resize(img, scale_wh), extra
+
     return PredictionWorker(
         MPPosePredictor(cfg),
         process_input=process_input,
         process_output=deserialize_mp_results,
+        clean_output=prep_send_mp_results,
         **kwargs,
     )
