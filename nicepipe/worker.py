@@ -175,7 +175,7 @@ class Worker(workerCfg):
         log.info("Waiting for input & output streams to close...")
         await asyncio.gather(
             self._loop_task,
-            *self._send_tasks,
+            trim_task_queue(self._send_tasks, 0),
             self._wss.close(),
             *[p.close() for p in self._predictor.values()],
         )

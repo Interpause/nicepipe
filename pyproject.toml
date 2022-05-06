@@ -77,6 +77,7 @@ blacksheep = "^1.2.6"
 uvicorn = {extras = ["standard"], version = "^0.17.6"}
 omegaconf = "^2.2.0"
 dearpygui = "^1.6.1"
+dearpygui-ext = "^0.9.4"
 
 [tool.poetry.group.dev.dependencies]
 poethepoet = "^0.13.1"

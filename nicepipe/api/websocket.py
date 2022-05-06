@@ -56,7 +56,11 @@ class WebsocketServer:
 
     async def close(self):
         self.wss.close()
-        await asyncio.gather(self.wss.wait_closed(), *self.tasks)
+        for task in self.tasks:
+            task.cancel()
+        await asyncio.gather(
+            self.wss.wait_closed(), *self.tasks, return_exceptions=True
+        )
 
     async def __aenter__(self):
         await self.open()

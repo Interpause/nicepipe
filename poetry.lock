@@ -206,6 +206,14 @@ optional = false
 python-versions = ">=3.7"
 
 [[package]]
+name = "dearpygui-ext"
+version = "0.9.4"
+description = "Dear PyGui Extensions: Extensions for Dear PyGui"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[[package]]
 name = "essentials"
 version = "1.1.5"
 description = "General purpose classes and functions, reusable in any kind of Python application"
@@ -1144,7 +1152,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.9,<3.10"
-content-hash = "35228e20955c82bca26a65ef4e932bb0c5f061f67c4d9dc58124c4d7f21152ea"
+content-hash = "7a9ea1e89e32d21410897ad3b2af5692d75c024452223d2cf675ee1bebfe78bb"
 
 [metadata.files]
 absl-py = [
@@ -1288,6 +1296,9 @@ dearpygui = [
     {file = "dearpygui-1.6.1-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:25d9f956dc9bf269e8dbd8235b12ad28431d6c7d6895d9b9a882397ed292208e"},
     {file = "dearpygui-1.6.1-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:03532436f08506a9f31beeb423e385d76d120f5aaa2c4a316cf5b0928e7b4f90"},
     {file = "dearpygui-1.6.1-cp39-cp39-win_amd64.whl", hash = "sha256:a4658859712f93919b4007a39a3d28998aa36f6e6c12c25bc84677e83029fa22"},
+]
+dearpygui-ext = [
+    {file = "dearpygui_ext-0.9.4.tar.gz", hash = "sha256:6400411db13a83d6bc3056d365d0caf8cbef311f05fd5ba239d6555b6e739081"},
 ]
 essentials = [
     {file = "essentials-1.1.5-py3-none-any.whl", hash = "sha256:905fa4a69fcd2b2cf41ecc6cc65827e30c87ef91f3f5c71540bcc5e984fa8360"},
