@@ -5,7 +5,7 @@ from pathlib import Path
 
 from omegaconf import OmegaConf, SCMode
 
-from .output import wsStreamCfg
+from .output import outputCfg
 from .input import cv2CapCfg
 from .predict import predictCfg
 
@@ -23,7 +23,7 @@ class miscCfg:
 class nicepipeCfg:
     predict: predictCfg = field(default_factory=predictCfg)
     input: cv2CapCfg = field(default_factory=cv2CapCfg)
-    output: wsStreamCfg = field(default_factory=wsStreamCfg)
+    output: outputCfg = field(default_factory=outputCfg)
     misc: miscCfg = field(default_factory=miscCfg)
 
 
