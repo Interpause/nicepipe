@@ -12,6 +12,7 @@ from omegaconf.errors import OmegaConfBaseException
 import dearpygui.dearpygui as dpg
 from rich.prompt import Confirm
 from nicepipe.api import start_api
+from nicepipe.input.cv2 import print_cv2_debug
 
 
 import nicepipe.utils.uvloop
@@ -104,6 +105,7 @@ def main(cfg: DictConfig):
 
             log.debug(f"Config: {cfg}")
             log.debug(f"Cwd: {os.getcwd()}")
+            print_cv2_debug()
 
             if sys.platform.startswith("win"):
                 log.warning(

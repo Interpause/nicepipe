@@ -97,3 +97,12 @@ class cv2CapSource(cv2CapCfg, Source):
         self._is_closing = True
         await gather(cancel_and_join(self._task), to_thread(self._cap.release))
         log.debug("%s closed!", type(self).__name__)
+
+
+def print_cv2_debug():
+    log.debug(
+        "See https://docs.opencv.org/3.4/dc/d3d/videoio_8hpp.html for more details."
+    )
+    log.debug(f"Camera Backends: {cv2.videoio_registry.getCameraBackends()}")
+    log.debug(f"File Backends: {cv2.videoio_registry.getStreamBackends()}")
+    log.debug(f"Writer Backends: {cv2.videoio_registry.getWriterBackends()}")
