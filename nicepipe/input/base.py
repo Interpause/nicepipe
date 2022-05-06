@@ -26,8 +26,8 @@ class Source(ABC, WithFPSCallback):
         return (0, 0, 3)
 
     @abstractmethod
-    async def __anext__(self) -> np.ndarray[np.uint8]:
-        return self.frame
+    async def __anext__(self) -> Tuple[np.ndarray[np.uint8], int]:
+        return self.frame, 0
 
     @abstractmethod
     async def open(self):

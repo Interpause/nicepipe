@@ -51,13 +51,11 @@ class cv2CapSource(cv2CapCfg, Source):
 
     async def _loop(self):
         while self.is_open:
-            # success = await to_thread(self._cap.read, self.frame)
-            success, img = await to_thread(self._cap.read)
+            success = await to_thread(self._cap.read, self.frame)
             if not success:
                 log.debug("Ignoring empty camera frame.")
                 continue
             self._nframe += 1
-            self.frame = img
             self.fps_callback()
 
     async def __anext__(self):
@@ -70,7 +68,7 @@ class cv2CapSource(cv2CapCfg, Source):
             pass
         finally:
             self._prev_frame = self._nframe
-            return self.frame
+            return self.frame, self._nframe
 
     def _init_cv2_cap(self):
         # for some reason, props can only be set AFTER opening

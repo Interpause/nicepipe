@@ -11,9 +11,10 @@ from multiprocessing import freeze_support
 # needed on windows for multiprocessing
 freeze_support()
 
-from .utils import *
+from .worker import Worker, create_worker
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"
+__all__ = ["Worker", "create_worker"]
 
 
 def run(cfg):

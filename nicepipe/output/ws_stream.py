@@ -1,13 +1,13 @@
 from __future__ import annotations
 import asyncio
 import logging
-from typing import Any
+from typing import Any, Tuple
 from dataclasses import dataclass, field
 
 import numpy as np
 
 from ..api.websocket import WebsocketServer, wssCfg
-from ..utils import cancel_and_join, encodeImg, rlloop, cv2EncCfg
+from ..utils import cancel_and_join, encodeImg, cv2EncCfg, set_interval
 from ..predict import PredictionWorker
 from .base import Sink, baseSinkCfg
 
@@ -28,30 +28,32 @@ class WebsocketStreamer(Sink, wsStreamCfg):
     """predictors are needed in order to jsonify predictions from each."""
 
     async def _loop(self):
-        async for _ in rlloop(self.max_fps):
-            if self._cur_data is None:
+        try:
+            img, preds = self._cur_data
+        except (AttributeError, TypeError):
+            return
+        try:
+            if self.lock_fps and img[1] == self._prev_id:
+                return
+        except AttributeError:
+            pass
+        self._prev_id = img[1]
+        img = await asyncio.to_thread(self._encode, img[0])
+
+        # We running into the Python object caching issue again!
+        out = {}
+        for name, data in preds.items():
+            if data is None:
                 continue
 
-            img, preds = self._cur_data
-            img = await asyncio.to_thread(self._encode, img)
+            out[name] = await self.predictors[name].clean_output(
+                data, img_encoder=self._encode
+            )
 
-            # We running into the Python object caching issue again!
-            out = {}
-            for name, data in preds.items():
-                if data is None:
-                    continue
+        await self._wss.broadcast("frame", {"img": img, "preds": preds})
+        self.fps_callback()
 
-                if isinstance(data, dict):
-                    log.error(f"Python failed us! {data}")
-
-                out[name] = await self.predictors[name].clean_output(
-                    data, img_encoder=self._encode
-                )
-
-            await self._wss.broadcast("frame", {"img": img, "preds": out})
-            self.fps_callback()
-
-    def send(self, img: np.ndarray[np.uint8], preds: dict[str, Any]):
+    def send(self, img: Tuple[np.ndarray, int], preds: dict[str, Any]):
         self._cur_data = (img, preds)
 
     async def open(self):
@@ -60,7 +62,7 @@ class WebsocketStreamer(Sink, wsStreamCfg):
         self._encode = lambda im: encodeImg(im, **self.cv2_enc)
         self._wss = WebsocketServer(**self.wss)
         await self._wss.open()
-        self._task = asyncio.create_task(self._loop())
+        self._task = set_interval(self._loop, self.max_fps)
 
     async def close(self):
         self._is_closing = True

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any
+from typing import Any, Tuple
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
@@ -12,7 +12,7 @@ from ..utils import WithFPSCallback
 class baseSinkCfg:
     max_fps: int = 30
     """Max output rate of Sink."""
-    lock_fps: bool = True
+    lock_fps: bool = False
     """Whether to lock output rate to input rate."""
 
 
@@ -21,7 +21,7 @@ class Sink(ABC, baseSinkCfg, WithFPSCallback):
     """Abstract class for output sources."""
 
     @abstractmethod
-    def send(img: np.ndarray[np.uint8], preds: dict[str, Any]):
+    def send(img: Tuple[np.ndarray, int], preds: dict[str, Any]):
         pass
 
     @abstractmethod

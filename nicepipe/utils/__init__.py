@@ -1,4 +1,5 @@
 from __future__ import annotations
+from collections import deque
 from dataclasses import dataclass, field
 from typing import AsyncIterable, Callable, Deque
 
@@ -60,18 +61,17 @@ class WithFPSCallback:
 
 async def cancel_and_join(*tasks: Task, reraise=True):
     """Cancel and await all tasks. if reraise is true, raises a list of all exceptions from tasks excluding CancelledError and KeyboardInterrupt."""
+    if len(tasks) == 0:
+        return
     for task in tasks:
         task.cancel()
     results = await asyncio.gather(*tasks, return_exceptions=True)
     if reraise:
-        errors = list(
-            filter(
-                lambda r: isinstance(r, Exception)
-                and not (
-                    isinstance(r, KeyboardInterrupt) or isinstance(r, CancelledError)
-                ),
-                results,
-            )
+        errors = tuple(
+            r
+            for r in results
+            if isinstance(r, Exception)
+            and not (isinstance(r, CancelledError) or isinstance(r, KeyboardInterrupt))
         )
         if len(errors) == 0:
             return
@@ -85,10 +85,26 @@ async def trim_task_queue(tasks: Deque[Task], maxlen: int):
     """Clear queued up tasks which may have gotten stuck."""
     popped = []
     while len(tasks) > maxlen:
-        task = tasks.popleft()
-        popped.append(task)
+        popped.append(tasks.popleft())
 
     return await cancel_and_join(*popped)
+
+
+def set_interval(afunc, fps, maxlen=10, args=[], kwargs={}):
+    """Runs async function at fps as a task. Queues up the tasks and clears the queue when needed."""
+
+    async def loop():
+        tasks = deque()
+        try:
+            async for _ in rlloop(fps):
+                tasks.append(asyncio.create_task(afunc(*args, **kwargs)))
+                await trim_task_queue(tasks, maxlen)
+        except CancelledError:
+            pass
+        finally:
+            await cancel_and_join(*tasks)
+
+    return asyncio.create_task(loop())
 
 
 # opencv options available for encoding

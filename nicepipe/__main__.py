@@ -1,5 +1,4 @@
 from __future__ import annotations
-from collections import deque
 import sys
 import os
 import logging
@@ -20,10 +19,8 @@ from nicepipe.cfg import get_config, nicepipeCfg
 from nicepipe.utils import (
     cancel_and_join,
     enable_fancy_console,
-    add_fps_counter,
     rlloop,
     change_cwd,
-    trim_task_queue,
 )
 from nicepipe.gui import setup_gui, show_camera
 from nicepipe.worker import create_worker

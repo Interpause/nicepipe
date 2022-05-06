@@ -29,7 +29,10 @@ class Worker(WithFPSCallback):
         # modifies the dict, it fairly often carries onto the next "new" dict.
         # This is likely due to Python's object caching, and the fact we are hitting its
         # limits by doing realtime video processing.
+
         async for img in self.source:
+            # This loop is locked to the input FPS, but its FPS has to be monitored in case
+            # improper implementations of predictors or sinks slow it down.
             self.fps_callback()
             preds = {name: p.predict(img) for name, p in self.predictors.items()}
             for s in self.sinks.values():

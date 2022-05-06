@@ -74,7 +74,7 @@ class predictionWorkerCfg:
     # fps related
     max_fps: int = 60
     """max io rate of Predictor in Hz"""
-    lock_fps: bool = True
+    lock_fps: bool = False
     """Whether to lock prediction rate to input rate."""
 
 
@@ -107,7 +107,7 @@ class PredictionWorker(predictionWorkerCfg, WithFPSCallback):
     """Used to ensure output can be JSON serialized at least."""
 
     # variables
-    current_input: Tuple[ndarray, dict] = None
+    current_input: Tuple[Tuple[ndarray, int], dict] = None
     """current input"""
     current_output: Any = None
     """current output"""
@@ -115,8 +115,6 @@ class PredictionWorker(predictionWorkerCfg, WithFPSCallback):
     """flag to break loop"""
     loop_task: Task = None
     """main task for both IO loops"""
-    input_num: int = 0
-    """Number of unique inputs so far, used to limit prediction by input rate."""
 
     # multiprocessing
     process: Process = None
@@ -126,38 +124,30 @@ class PredictionWorker(predictionWorkerCfg, WithFPSCallback):
 
     async def _in_loop(self):
         """loop for sending inputs to child process"""
-        prev_num = self.input_num
+        prev_id = -1
         async for _ in rlloop(self.max_fps):
             if self.is_closing:
                 break
-            # limit fps by input rate, also handily skips initial None input
-            if self.input_num == prev_num:
+            try:
+                img, extra = self.current_input
+                if self.lock_fps and img[1] == prev_id:
+                    continue
+                prev_id = img[1]
+            except TypeError:  # current_input is initially None
                 continue
-            if self.lock_fps:
-                prev_num = self.input_num
-
-            data, extra = self.current_input
-            input = await self.process_input(data, **extra)
-            # await this or it accumulates
+            input = await self.process_input(img[0], **extra)
             await to_thread(self.pipe.send, input)
 
     async def _out_loop(self):
         """loop for receiving outputs from child process"""
-        async for _ in rlloop(self.max_fps, update_func=self.fps_callback):
-            if self.is_closing:
-                break
+        while not self.is_closing:
             output = await to_thread(self.pipe.recv)
             self.current_output = await self.process_output(output)
+            self.fps_callback()
 
-    def predict(self, img: ndarray, **extra):
+    def predict(self, img: Tuple[ndarray, int], **extra):
         """returns latest prediction & scheldules img & extra for the next"""
-        if (
-            self.current_input is None
-            or not img is self.current_input[0]
-            or extra != self.current_input[1]
-        ):
-            self.current_input = (img, extra)
-            self.input_num += 1
+        self.current_input = (img, extra)
         return self.current_output
 
     async def open(self):

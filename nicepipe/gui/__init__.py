@@ -69,6 +69,7 @@ def show_camera():
             pass
 
         def send(self, img, preds):
+            img = img[0]
             if imbuffer is None:
                 initialize(img.shape[1], img.shape[0])
 
