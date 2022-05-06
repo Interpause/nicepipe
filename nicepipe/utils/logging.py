@@ -125,7 +125,7 @@ def enable_fancy_console(start_live=True, log_level=logging.DEBUG):
         console=console,
         tracebacks_suppress=[asyncio],
     )
-    rich.setFormatter(Formatter(fmt="%(message)s", datefmt="[%X]"))
+    rich.setFormatter(Formatter(fmt="[%(name)s] %(message)s", datefmt="[%X]"))
     rich.addFilter(filter_by_logger(log_level))
 
     root = logging.getLogger()

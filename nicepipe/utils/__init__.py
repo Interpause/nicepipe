@@ -3,7 +3,7 @@ from typing import AsyncIterable, Deque
 
 import time
 import asyncio
-from asyncio import Task
+from asyncio import CancelledError, Task
 from base64 import b64encode
 from urllib.parse import quote_from_bytes
 from numpy import ndarray
@@ -49,15 +49,37 @@ async def rlloop(rate, iterator=None, update_func=lambda: 0):
         yield i
 
 
+async def cancel_and_join(tasks: list[Task], reraise=True):
+    """Cancel and await all tasks. if reraise is true, raises a list of all exceptions from tasks excluding CancelledError and KeyboardInterrupt."""
+    for task in tasks:
+        task.cancel()
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    if reraise:
+        errors = list(
+            filter(
+                lambda r: isinstance(r, Exception)
+                and not (
+                    isinstance(r, KeyboardInterrupt) or isinstance(r, CancelledError)
+                ),
+                results,
+            )
+        )
+        if len(errors) == 0:
+            return
+        elif len(errors) == 1:
+            raise errors[0]
+        else:
+            raise Exception(errors)
+
+
 async def trim_task_queue(tasks: Deque[Task], maxlen: int):
     """Clear queued up tasks which may have gotten stuck."""
     popped = []
     while len(tasks) > maxlen:
         task = tasks.popleft()
-        task.cancel()
         popped.append(task)
 
-    return await asyncio.gather(*popped, return_exceptions=True)
+    return await cancel_and_join(popped)
 
 
 # opencv options available for encoding

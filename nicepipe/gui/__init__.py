@@ -10,7 +10,7 @@ import mediapipe.python.solutions.drawing_utils as mp_drawing
 import mediapipe.python.solutions.drawing_styles as mp_drawing_styles
 import mediapipe.python.solutions.pose as mp_pose
 
-from ..utils import add_fps_task, rlloop
+from ..utils import add_fps_task, cancel_and_join, rlloop
 
 log = logging.getLogger(__name__)
 
@@ -107,5 +107,4 @@ async def setup_gui():
         try:
             yield task
         finally:
-            task.cancel()
-            await asyncio.gather(task, return_exceptions=True)
+            await cancel_and_join([task])

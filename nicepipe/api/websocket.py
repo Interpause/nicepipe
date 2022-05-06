@@ -5,6 +5,8 @@ import json
 import asyncio
 import websockets
 
+from ..utils import cancel_and_join
+
 
 @dataclass
 class WebsocketServer:
@@ -56,11 +58,8 @@ class WebsocketServer:
 
     async def close(self):
         self.wss.close()
-        for task in self.tasks:
-            task.cancel()
-        await asyncio.gather(
-            self.wss.wait_closed(), *self.tasks, return_exceptions=True
-        )
+        await cancel_and_join(self.tasks)
+        await self.wss.wait_closed()
 
     async def __aenter__(self):
         await self.open()

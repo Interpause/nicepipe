@@ -17,6 +17,7 @@ from rich.prompt import Confirm
 import nicepipe.utils.uvloop
 from nicepipe.cfg import get_config
 from nicepipe.utils import (
+    cancel_and_join,
     enable_fancy_console,
     add_fps_task,
     rlloop,
@@ -90,11 +91,12 @@ async def loop(cfg: DictConfig):
 
             resume_task.cancel()
             server_task.cancel()
-            await asyncio.gather(
-                server_task,
-                resume_task,
-                trim_task_queue(tasks, 0),
-                return_exceptions=True,
+            await trim_task_queue(tasks, 0)
+            await cancel_and_join(
+                [
+                    server_task,
+                    resume_task,
+                ]
             )
             rich_live_display.stop()
 
