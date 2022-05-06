@@ -79,6 +79,7 @@ dearpygui = "^1.6.1"
 dearpygui-ext = "^0.9.4"
 python-socketio = "^5.6.0"
 sanic = "^22.3.1"
+Sanic-Cors = "^2.0.1"
 
 [tool.poetry.group.dev.dependencies]
 poethepoet = "^0.13.1"

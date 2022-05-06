@@ -66,16 +66,15 @@ async def loop(cfg: nicepipeCfg):
         worker.sinks["gui"] = gui_sink()
 
         async with worker:
-            resume_task = asyncio.create_task(resume_live_display())
-            # server_task = asyncio.create_task(start_api(log_level=cfg.misc.log_level))
-            async for _ in rlloop(5):
-                if not dpg.is_dearpygui_running():
-                    break
-            await cancel_and_join(
-                resume_task,
-                # server_task,
-            )
-            rich_live_display.stop()
+            async with start_api(log_level=cfg.misc.log_level) as (app, sio):
+                resume_task = asyncio.create_task(resume_live_display())
+                async for _ in rlloop(5):
+                    if not dpg.is_dearpygui_running():
+                        break
+                await cancel_and_join(
+                    resume_task,
+                )
+                rich_live_display.stop()
 
 
 # TODO: Configuration System
