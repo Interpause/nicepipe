@@ -4,11 +4,12 @@ import sys
 import os
 import logging
 import asyncio
+from blacksheep import Application
 
 from omegaconf import OmegaConf, DictConfig
 from omegaconf.errors import OmegaConfBaseException
 
-# import uvicorn
+import uvicorn
 import dearpygui.dearpygui as dpg
 from rich.prompt import Confirm
 
@@ -56,10 +57,18 @@ async def resume_live_display():
     rich_live_display.start()
 
 
+async def setup_uvicorn(cfg: DictConfig):
+    app = Application()
+    config = uvicorn.Config(app, log_config=None, log_level=cfg.misc.log_level)
+    server = uvicorn.Server(config)
+    await server.serve()
+
+
 async def loop(cfg: DictConfig):
     async with Worker(**cfg.worker) as worker:
         vid_loop = add_fps_task("video loop")
         resume_task = asyncio.create_task(resume_live_display())
+        server_task = asyncio.create_task(setup_uvicorn(cfg))
 
         async with setup_gui():
             update_imbuffer, cam_window = show_camera()
@@ -80,12 +89,14 @@ async def loop(cfg: DictConfig):
                 await trim_task_queue(tasks, 30)
 
             resume_task.cancel()
+            server_task.cancel()
             await asyncio.gather(
-                resume_task, trim_task_queue(tasks, 0), return_exceptions=True
+                server_task,
+                resume_task,
+                trim_task_queue(tasks, 0),
+                return_exceptions=True,
             )
             rich_live_display.stop()
-
-    # uvicorn.run(app, host="127.0.0.1", port=5000, log_level="info")
 
 
 # TODO: Configuration System
@@ -147,6 +158,7 @@ if __name__ == "__main__":
         log.error(e, exc_info=e)
     finally:
         input("Press enter to continue...")
+        sys.exit(0)
 
 
 # TODO: Given HydraConf wont work. Test omegaConf first. then write using omegaConf a shallow shadow of Hydra (similar to Odyssey lmao)

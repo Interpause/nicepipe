@@ -79,7 +79,8 @@ class Worker(workerCfg):
         self._cur_data = {}
         self._cur_img = None
         self._pbar = {
-            "main": add_fps_task("worker loop"),
+            "main": add_fps_task("recv loop"),
+            "send": add_fps_task("send loop"),
             **{k: add_fps_task(f"predict:{k}") for k in self.predict},
         }
         self._wss = WebsocketServer(**self.wss)
@@ -114,6 +115,7 @@ class Worker(workerCfg):
             )
 
         await self._wss.broadcast("frame", {"img": img, **preds})
+        self._pbar["send"]()
 
     async def _loop(self):
         # NOTE: dont modify extra downstream else it will affect this one
