@@ -62,11 +62,12 @@ async def loop(cfg: nicepipeCfg):
         gui_sink, cam_window = show_camera()
         dpg.set_primary_window(cam_window, True)
 
-        worker = create_worker(cfg)
-        worker.sinks["gui"] = gui_sink()
+        async with start_api(log_level=cfg.misc.log_level) as (app, sio):
+            worker = create_worker(cfg)
+            worker.sinks["gui"] = gui_sink()
+            sio.register_namespace(worker.sinks["sio"])
 
-        async with worker:
-            async with start_api(log_level=cfg.misc.log_level) as (app, sio):
+            async with worker:
                 resume_task = asyncio.create_task(resume_live_display())
                 async for _ in rlloop(5):
                     if not dpg.is_dearpygui_running():

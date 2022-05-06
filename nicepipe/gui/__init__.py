@@ -1,7 +1,8 @@
 import asyncio
 import logging
 import dearpygui.dearpygui as dpg
-from dearpygui_ext.logger import mvLogger
+
+# from dearpygui_ext.logger import mvLogger
 from contextlib import asynccontextmanager, contextmanager
 
 import numpy as np

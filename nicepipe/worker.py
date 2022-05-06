@@ -5,9 +5,9 @@ import asyncio
 
 from .cfg import nicepipeCfg
 from .input import cv2CapSource
-from .predict import PredictionWorker, create_mp_pose_worker
+from .predict import PredictionWorker, create_predictors
 from .input import Source
-from .output import Sink, WebsocketStreamer
+from .output import Sink, create_sinks
 from .utils import WithFPSCallback, cancel_and_join, add_fps_counter
 
 log = logging.getLogger(__name__)
@@ -68,24 +68,15 @@ class Worker(WithFPSCallback):
 
 def create_worker(cfg: nicepipeCfg):
     input_counter = add_fps_counter("input: cv2")
-    pose_counter = add_fps_counter("predict: mp pose")
     worker_counter = add_fps_counter("main: worker")
-    ws_counter = add_fps_counter("output: ws")
 
     source = cv2CapSource(fps_callback=input_counter, **cfg.input)
 
-    # TODO: dont hardcode this, use _target_ instantiation
-    predictors = {}
-    if not cfg.predict.mp_pose is None:
-        predictors["mp_pose"] = create_mp_pose_worker(
-            fps_callback=pose_counter, **cfg.predict.mp_pose
-        )
+    predictors = create_predictors(cfg.predict)
+    sinks = create_sinks(cfg.output)
 
-    sinks = {
-        "ws": WebsocketStreamer(
-            fps_callback=ws_counter, predictors=predictors, **cfg.output
-        )
-    }
+    sinks["ws"].predictors = predictors
+    sinks["sio"].predictors = predictors
 
     return Worker(
         fps_callback=worker_counter, source=source, predictors=predictors, sinks=sinks

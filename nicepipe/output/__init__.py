@@ -5,6 +5,7 @@ from typing import Optional
 from ..utils import add_fps_counter
 from .base import Sink
 from .ws_stream import wsStreamCfg, WebsocketStreamer
+from .sio_stream import sioStreamCfg, SioStreamer
 
 __all__ = [
     "outputCfg",
@@ -12,12 +13,15 @@ __all__ = [
     "Sink",
     "wsStreamCfg",
     "WebsocketStreamer",
+    "sioStreamCfg",
+    "SioStreamer",
 ]
 
 
 @dataclass
 class outputCfg:
     ws_stream: Optional[wsStreamCfg] = field(default_factory=wsStreamCfg)
+    sio_stream: Optional[sioStreamCfg] = field(default_factory=sioStreamCfg)
 
 
 def create_sinks(cfg: outputCfg, add_fps_counters=True) -> dict[str, Sink]:
@@ -25,6 +29,8 @@ def create_sinks(cfg: outputCfg, add_fps_counters=True) -> dict[str, Sink]:
     sinks: dict[str, Sink] = {}
     if cfg.ws_stream:
         sinks["ws"] = WebsocketStreamer(**cfg.ws_stream)
+    if cfg.sio_stream:
+        sinks["sio"] = SioStreamer(**cfg.sio_stream)
 
     if add_fps_counters:
         for name, sink in sinks.items():
