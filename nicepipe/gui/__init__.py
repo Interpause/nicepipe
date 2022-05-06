@@ -10,7 +10,8 @@ import mediapipe.python.solutions.drawing_utils as mp_drawing
 import mediapipe.python.solutions.drawing_styles as mp_drawing_styles
 import mediapipe.python.solutions.pose as mp_pose
 
-from ..utils import add_fps_task, cancel_and_join, rlloop
+from ..output import Sink
+from ..utils import add_fps_counter, cancel_and_join, rlloop
 
 log = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ def create_gui():
 
 
 async def gui_loop(render):
-    gui_loop = add_fps_task("gui loop")
+    gui_loop = add_fps_counter("main: GUI")
     async for _ in rlloop(60, update_func=gui_loop):
         render()
         if not dpg.is_dearpygui_running():
@@ -60,21 +61,28 @@ def show_camera():
 
         dpg.set_value("logs", dpg.get_value("logs") + "\ncam received!")
 
-    def update_imbuffer(results, img):
-        if imbuffer is None:
-            initialize(img.shape[1], img.shape[0])
+    class GUIStreamer(Sink):
+        async def open(self):
+            pass
 
-        imbuffer[...] = img[..., ::-1] / 255
-        mp_results = results.get("mp_pose")
-        if not mp_results is None:
-            mp_drawing.draw_landmarks(
-                imbuffer,
-                mp_results.pose_landmarks,
-                mp_pose.POSE_CONNECTIONS,
-                landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style(),
-            )
+        async def close(self):
+            pass
 
-    return update_imbuffer, window
+        def send(self, img, preds):
+            if imbuffer is None:
+                initialize(img.shape[1], img.shape[0])
+
+            imbuffer[...] = img[..., ::-1] / 255
+            mp_results = preds.get("mp_pose", None)
+            if not mp_results is None:
+                mp_drawing.draw_landmarks(
+                    imbuffer,
+                    mp_results.pose_landmarks,
+                    mp_pose.POSE_CONNECTIONS,
+                    landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style(),
+                )
+
+    return GUIStreamer, window
 
 
 def show_logger():
@@ -84,7 +92,7 @@ def show_logger():
     with dpg.window(label="Logs"):
         dpg.add_input_text(multiline=True, readonly=True, source="logs")
 
-    # dearpygui's logger is too simplistic. also doesnt support copy and paste. might as well write my own.
+    # TODO: dearpygui's logger is too simplistic. also doesnt support copy and paste. might as well write my own.
     # probably will have to write it as a Handler that creates a window or smth
     # logger = mvLogger(parent=dpg.window(label="Logs"))
 
@@ -107,4 +115,4 @@ async def setup_gui():
         try:
             yield task
         finally:
-            await cancel_and_join([task])
+            await cancel_and_join(task)

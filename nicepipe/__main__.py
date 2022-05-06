@@ -4,28 +4,29 @@ import sys
 import os
 import logging
 import asyncio
-from blacksheep import Application
+
 
 from omegaconf import OmegaConf, DictConfig
 from omegaconf.errors import OmegaConfBaseException
 
-import uvicorn
+
 import dearpygui.dearpygui as dpg
 from rich.prompt import Confirm
+from nicepipe.api import start_api
 
 
 import nicepipe.utils.uvloop
-from nicepipe.cfg import get_config
+from nicepipe.cfg import get_config, nicepipeCfg
 from nicepipe.utils import (
     cancel_and_join,
     enable_fancy_console,
-    add_fps_task,
+    add_fps_counter,
     rlloop,
     change_cwd,
     trim_task_queue,
 )
 from nicepipe.gui import setup_gui, show_camera
-from nicepipe.worker import Worker
+from nicepipe.worker import create_worker
 
 
 log = logging.getLogger(__name__)
@@ -58,45 +59,23 @@ async def resume_live_display():
     rich_live_display.start()
 
 
-async def setup_uvicorn(cfg: DictConfig):
-    app = Application()
-    config = uvicorn.Config(app, log_config=None, log_level=cfg.misc.log_level)
-    server = uvicorn.Server(config)
-    await server.serve()
+async def loop(cfg: nicepipeCfg):
+    async with setup_gui():
+        gui_sink, cam_window = show_camera()
+        dpg.set_primary_window(cam_window, True)
 
+        worker = create_worker(cfg)
+        worker.sinks["gui"] = gui_sink()
 
-async def loop(cfg: DictConfig):
-    async with Worker(**cfg.worker) as worker:
-        vid_loop = add_fps_task("video loop")
-        resume_task = asyncio.create_task(resume_live_display())
-        server_task = asyncio.create_task(setup_uvicorn(cfg))
-
-        async with setup_gui():
-            update_imbuffer, cam_window = show_camera()
-            dpg.set_primary_window(cam_window, True)
-            tasks = deque()
-            async for results, img in rlloop(
-                cfg.worker.cv2_cap.fps, iterator=worker.next(), update_func=vid_loop
-            ):
+        async with worker:
+            resume_task = asyncio.create_task(resume_live_display())
+            # server_task = asyncio.create_task(start_api(log_level=cfg.misc.log_level))
+            async for _ in rlloop(5):
                 if not dpg.is_dearpygui_running():
                     break
-                if img is None:
-                    continue
-                tasks.append(
-                    asyncio.create_task(
-                        asyncio.to_thread(update_imbuffer, results, img)
-                    )
-                )
-                await trim_task_queue(tasks, 30)
-
-            resume_task.cancel()
-            server_task.cancel()
-            await trim_task_queue(tasks, 0)
             await cancel_and_join(
-                [
-                    server_task,
-                    resume_task,
-                ]
+                resume_task,
+                # server_task,
             )
             rich_live_display.stop()
 

@@ -5,7 +5,9 @@ from pathlib import Path
 
 from omegaconf import OmegaConf, SCMode
 
-from .worker import workerCfg
+from .output import wsStreamCfg
+from .input import cv2CapCfg
+from .predict import predictCfg
 
 log = logging.getLogger(__name__)
 
@@ -19,7 +21,9 @@ class miscCfg:
 
 @dataclass
 class nicepipeCfg:
-    worker: workerCfg = field(default_factory=workerCfg)
+    predict: predictCfg = field(default_factory=predictCfg)
+    input: cv2CapCfg = field(default_factory=cv2CapCfg)
+    output: wsStreamCfg = field(default_factory=wsStreamCfg)
     misc: miscCfg = field(default_factory=miscCfg)
 
 

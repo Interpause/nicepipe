@@ -9,11 +9,15 @@ from ..utils import cancel_and_join
 
 
 @dataclass
-class WebsocketServer:
-    """object-based wrapper around websockets"""
-
+class wssCfg:
     host: str = "localhost"
     port: int = 8080
+
+
+@dataclass
+class WebsocketServer(wssCfg):
+    """object-based wrapper around websockets"""
+
     heartbeat_interval: int = 1
 
     def __post_init__(self):
@@ -58,7 +62,7 @@ class WebsocketServer:
 
     async def close(self):
         self.wss.close()
-        await cancel_and_join(self.tasks)
+        await cancel_and_join(*self.tasks)
         await self.wss.wait_closed()
 
     async def __aenter__(self):

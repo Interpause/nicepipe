@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nicepipe"
-version = "0.3.2"
+version = "0.4.0"
 description = "remote worker for video inference"
 license = "Proprietary"
 authors = ["John-Henry Lim <42513874+Interpause@users.noreply.github.com>"]
@@ -73,11 +73,12 @@ mediapipe = "^0.8.9.1"
 uvloop = {version = "^0.16.0", platform = "linux"}
 tensorflow = "^2.8.0"
 rich = "^12.2.0"
-blacksheep = "^1.2.6"
 uvicorn = {extras = ["standard"], version = "^0.17.6"}
 omegaconf = "^2.2.0"
 dearpygui = "^1.6.1"
 dearpygui-ext = "^0.9.4"
+python-socketio = "^5.6.0"
+sanic = "^22.3.1"
 
 [tool.poetry.group.dev.dependencies]
 poethepoet = "^0.13.1"

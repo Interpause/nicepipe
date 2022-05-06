@@ -14,7 +14,7 @@ from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn, ProgressColumn
 
 # imported just to be excluded from logging
-import asyncio
+import asyncio, concurrent
 
 console = get_console()
 """fancy Rich console, please call enable_fancy_console() to fully utilize"""
@@ -46,8 +46,8 @@ fps_bar = Progress(
 """used for tracking fps"""
 
 
-def add_fps_task(name, total=float("inf"), advance=1):
-    """Add task to track via the fps bar and returns update function."""
+def add_fps_counter(name, total=float("inf"), advance=1):
+    """Returns update function."""
     task_id = fps_bar.add_task(name, total=total)
     return lambda: fps_bar.update(task_id, advance=advance)
 
@@ -123,7 +123,7 @@ def enable_fancy_console(start_live=True, log_level=logging.DEBUG):
         rich_tracebacks=True,
         log_time_format="[%X]",
         console=console,
-        tracebacks_suppress=[asyncio],
+        tracebacks_suppress=[asyncio, concurrent],
     )
     rich.setFormatter(Formatter(fmt="[%(name)s] %(message)s", datefmt="[%X]"))
     rich.addFilter(filter_by_logger(log_level))

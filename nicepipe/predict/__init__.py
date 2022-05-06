@@ -3,9 +3,10 @@ from typing import Optional
 from dataclasses import dataclass, field
 
 
-from .mp_pose import mpPoseWorkerCfg
+from .mp_pose import mpPoseWorkerCfg, create_mp_pose_worker
+from .base import PredictionWorker
 
-__all__ = ["predictCfg"]
+__all__ = ["predictCfg", "PredictionWorker", "create_mp_pose_worker"]
 
 
 @dataclass

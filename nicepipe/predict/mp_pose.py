@@ -98,16 +98,14 @@ class MPPosePredictor(BasePredictor):
         return serialized
 
 
-def create_prediction_worker(
-    cfg=mpPoseCfg(), scale_wh=mpPoseWorkerCfg.scale_wh, **kwargs
-):
+def create_mp_pose_worker(cfg=mpPoseCfg(), scale_wh=mpPoseWorkerCfg.scale_wh, **kwargs):
     async def process_input(img, **extra):
         if scale_wh is None:
             return img, extra
         return await asyncio.to_thread(cv2.resize, img, scale_wh), extra
 
     return PredictionWorker(
-        MPPosePredictor(cfg),
+        predictor=MPPosePredictor(cfg),
         process_input=process_input,
         process_output=deserialize_mp_results,
         clean_output=prep_send_mp_results,

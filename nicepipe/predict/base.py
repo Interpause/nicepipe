@@ -1,7 +1,7 @@
 """Base/template for predictors."""
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Any, Generic, Protocol, Tuple, Callable, TypeVar, Union
+from typing import Any, Generic, Protocol, Tuple, TypeVar, Union
 from dataclasses import dataclass, field
 
 from numpy import ndarray
@@ -9,7 +9,7 @@ from asyncio import Task, run as async_run, gather, create_task, to_thread
 from multiprocessing import Pipe, Process
 from multiprocessing.connection import Connection
 
-from ..utils import rlloop
+from ..utils import rlloop, WithFPSCallback
 import nicepipe.utils.uvloop  # use uvloop for child process asyncio loop
 
 IT = TypeVar("IT")
@@ -79,7 +79,7 @@ class predictionWorkerCfg:
 
 
 @dataclass
-class PredictionWorker:
+class PredictionWorker(predictionWorkerCfg, WithFPSCallback):
     """Worker to manage running models in a separate process.
 
     Execution pipeline:
@@ -89,7 +89,7 @@ class PredictionWorker:
     3. main thread -> process_output -> return
     """
 
-    predictor: BasePredictor
+    predictor: BasePredictor = field(default_factory=BasePredictor)
     """predictor used"""
 
     # data processing
@@ -105,14 +105,6 @@ class PredictionWorker:
         default_factory=CallableWithExtra
     )
     """Used to ensure output can be JSON serialized at least."""
-
-    # fps related
-    max_fps: int = 30
-    """max io rate of Predictor in Hz"""
-    lock_fps: bool = True
-    """Whether to lock prediction rate to input rate."""
-    fps_callback: Callable = field(default=lambda: 0)
-    """function to call every loop, useful for debugging."""
 
     # variables
     current_input: Tuple[ndarray, dict] = None
