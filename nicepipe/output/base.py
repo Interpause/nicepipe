@@ -16,6 +16,9 @@ class baseSinkCfg:
     """Whether to lock output rate to input rate."""
 
 
+# TODO: A variant of Sink should be made for networked, async buffered streams like sio, ws and webrtc
+
+
 @dataclass
 class Sink(ABC, baseSinkCfg, WithFPSCallback):
     """Abstract class for output sources."""
@@ -25,7 +28,7 @@ class Sink(ABC, baseSinkCfg, WithFPSCallback):
         pass
 
     @abstractmethod
-    async def open(self):
+    async def open(self, **kwargs):
         pass
 
     @abstractmethod

@@ -42,11 +42,12 @@ class Worker(WithFPSCallback):
 
     async def open(self):
         self._is_closing = False
+        self._formatters = {n: p.format_output for n, p in self.predictors.items()}
 
         await asyncio.gather(
             self.source.open(),
             *[p.open() for p in self.predictors.values()],
-            *[s.open() for s in self.sinks.values()],
+            *[s.open(formatters = self._formatters) for s in self.sinks.values()],
         )
         self._task = asyncio.create_task(self._loop())
 
@@ -74,9 +75,6 @@ def create_worker(cfg: nicepipeCfg):
 
     predictors = create_predictors(cfg.predict)
     sinks = create_sinks(cfg.output)
-
-    sinks["ws"].predictors = predictors
-    sinks["sio"].predictors = predictors
 
     return Worker(
         fps_callback=worker_counter, source=source, predictors=predictors, sinks=sinks

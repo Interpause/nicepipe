@@ -59,7 +59,9 @@ class WithFPSCallback:
     """callback for updating FPS counter"""
 
 
-async def cancel_and_join(*tasks: Task, reraise=True):
+async def cancel_and_join(
+    *tasks: Task, reraise=True, ignored=[CancelledError, KeyboardInterrupt]
+):
     """Cancel and await all tasks. if reraise is true, raises a list of all exceptions from tasks excluding CancelledError and KeyboardInterrupt."""
     if len(tasks) == 0:
         return
@@ -70,8 +72,7 @@ async def cancel_and_join(*tasks: Task, reraise=True):
         errors = tuple(
             r
             for r in results
-            if isinstance(r, Exception)
-            and not (isinstance(r, CancelledError) or isinstance(r, KeyboardInterrupt))
+            if isinstance(r, Exception) and not any(isinstance(r, e) for e in ignored)
         )
         if len(errors) == 0:
             return

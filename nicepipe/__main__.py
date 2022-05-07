@@ -78,12 +78,6 @@ async def loop(cfg: nicepipeCfg):
                 rich_live_display.stop()
 
 
-# TODO: Configuration System
-# copy template config folder to parent directory
-# add template config folder to search path
-# compose app config using both builtin and external config groups
-
-
 def main(cfg: DictConfig):
     try:
         from nicepipe import __version__  # only way to avoid cyclic dependency
@@ -139,9 +133,3 @@ if __name__ == "__main__":
     finally:
         input("Press enter to continue...")
         sys.exit(0)
-
-
-# TODO: Given HydraConf wont work. Test omegaConf first. then write using omegaConf a shallow shadow of Hydra (similar to Odyssey lmao)
-# At least for the next version of Odyssey, given portable trainers arent in scope yet, Hydra can be used.
-
-# TODO: investigate Rich to_svg and to_html methods for a potentially easy way for making the log panel instead of going full-on terminal emulator

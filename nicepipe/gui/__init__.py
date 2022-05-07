@@ -63,7 +63,9 @@ def show_camera():
         dpg.set_value("logs", dpg.get_value("logs") + "\ncam received!")
 
     class GUIStreamer(Sink):
-        async def open(self):
+        """dirty hack output sink for the GUI"""
+
+        async def open(self, **_):
             pass
 
         async def close(self):
@@ -93,6 +95,8 @@ def show_logger():
 
     with dpg.window(label="Logs"):
         dpg.add_input_text(multiline=True, readonly=True, source="logs")
+
+    # TODO: investigate Rich to_svg and to_html methods for a potentially easy way for making the log panel instead of going full-on terminal emulator
 
     # TODO: dearpygui's logger is too simplistic. also doesnt support copy and paste. might as well write my own.
     # probably will have to write it as a Handler that creates a window or smth

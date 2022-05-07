@@ -25,8 +25,8 @@ class sioStreamCfg(baseSinkCfg):
 class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
     """Stream output over socketio. See https://python-socketio.readthedocs.io/en/latest/server.html#class-based-namespaces."""
 
-    predictors: dict[str, PredictionWorker] = field(default_factory=dict)
-    """predictors are needed in order to jsonify predictions from each."""
+    formatters: dict[str, PredictionWorker] = field(default_factory=dict)
+    """formatters are needed in order to jsonify predictions from each."""
 
     def on_connect(self, sid, environ, auth):
         # TODO: authenticate client; check if sufficient rights to VIEW
@@ -68,9 +68,7 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
             if data is None:
                 continue
 
-            out[name] = await self.predictors[name].clean_output(
-                data, img_encoder=self._encode
-            )
+            out[name] = await self.formatters[name](data, img_encoder=self._encode)
 
         await self.emit("frame", {"img": img, "preds": out}, room=self.room_name)
         self.fps_callback()
@@ -78,9 +76,12 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
     def send(self, img: Tuple[np.ndarray, int], preds: dict[str, Any]):
         self._cur_data = (img, preds)
 
-    async def open(self):
+    async def open(self, formatters=None, **_):
         self.is_open = True
         self._cur_data = None
+        self.formatters = (
+            formatters if isinstance(formatters, dict) else self.formatters
+        )
         self._encode = lambda im: encodeImg(im, **self.cv2_enc)
         self._task = set_interval(self._loop, self.max_fps)
 

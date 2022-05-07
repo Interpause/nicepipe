@@ -101,7 +101,7 @@ class PredictionWorker(predictionWorkerCfg, WithFPSCallback):
         default_factory=CallableWithExtra
     )
     """Used for output postprocessing in the child process, notably deserializing output."""
-    clean_output: CallableWithExtra[Any, JSONPrimitives] = field(
+    format_output: CallableWithExtra[Any, JSONPrimitives] = field(
         default_factory=CallableWithExtra
     )
     """Used to ensure output can be JSON serialized at least."""

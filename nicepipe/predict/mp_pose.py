@@ -108,6 +108,6 @@ def create_mp_pose_worker(cfg=mpPoseCfg(), scale_wh=mpPoseWorkerCfg.scale_wh, **
         predictor=MPPosePredictor(cfg),
         process_input=process_input,
         process_output=deserialize_mp_results,
-        clean_output=prep_send_mp_results,
+        format_output=prep_send_mp_results,
         **kwargs,
     )

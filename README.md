@@ -29,6 +29,26 @@ TODO: Insert planned architecture documentation.
    - Use `poe build-windows-minimal` to exclude Tensorflow & CUDA (since its not currently being used and inflates file size by a lot)
 7. On first run, the server will generate `config.yml` in the same directory. Modifying it requires a server restart.
 
+## Refactors Possible
+
+- Formal lightweight Packet struct of 2 variants, immutable and mutable (mutable packets being those that hold data such as direct references to image buffers instead of copies of that buffer).
+- AsyncioWorkers
+  - Base concept of a worker with negligable IO times (passive data retrieval) in exchange for data-desynchronization
+  - 4 variants: async (separate loop), async buffered (async queue), threaded (use thread for loop), forked (use process for loop)
+  - Unified API
+    - Debug API such as FPS callbacks
+    - Support for usage independently or as context
+    - Function to "join" loop to actively get data instead of passively
+- Refactor out logging & config system to make a OmegaConf-Rich hybrid that is more portable and flexible than Hydra
+- Refactor out async utils such as rate-limited loops, set_interval, set_timeout, cancel_and_join, etc
+- Refactor out pip CUDA hack
+
+## Tests Possible
+
+- Test that AsyncioWorker has negligable IO time and non-zero output FPS
+- Test logging and config merging
+- Integrating Sources, Predictors and Sinks from external packages
+
 ## Tips
 
 [Postman](https://www.postman.com/) is good for testing APIs. See <https://blog.postman.com/postman-now-supports-socket-io/>.
@@ -48,3 +68,7 @@ On Linux, while `nicepipe.cuda` works in development, and `PyInstaller` correctl
 I already tried to resolve most of them. There is one caused by `poethepoet` (<https://github.com/nat-n/poethepoet/issues/42>) that can be bypassed by running `python app.py` directly. See <https://stackoverflow.com/questions/70399670/how-to-shutdown-gracefully-on-keyboard-interrupt-when-an-asyncio-task-is-perform> about the rest.
 
 I have ensured at least that the Worker can start and stop without error messages. KeyboardInterrupt is a bit more iffy.
+
+~If only Python's API allowed me to easily treat async and sync variants of functions and iterators as the same, right now a lot of utils are awkward to write as separate variants are needed for both. is there a function to auto-convert sync stuff to async (maybe use to_thread) while ignoring async stuff?~
+
+~Python really needs a way to be ultra flexible about kwargs~

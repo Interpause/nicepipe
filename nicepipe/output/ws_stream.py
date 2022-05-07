@@ -24,8 +24,8 @@ class wsStreamCfg(baseSinkCfg):
 class WebsocketStreamer(Sink, wsStreamCfg):
     """Stream output over websocket."""
 
-    predictors: dict[str, PredictionWorker] = field(default_factory=dict)
-    """predictors are needed in order to jsonify predictions from each."""
+    formatters: dict[str, PredictionWorker] = field(default_factory=dict)
+    """formatters are needed in order to jsonify predictions from each."""
 
     async def _loop(self):
         try:
@@ -46,9 +46,7 @@ class WebsocketStreamer(Sink, wsStreamCfg):
             if data is None:
                 continue
 
-            out[name] = await self.predictors[name].clean_output(
-                data, img_encoder=self._encode
-            )
+            out[name] = await self.formatters[name](data, img_encoder=self._encode)
 
         await self._wss.broadcast("frame", {"img": img, "preds": out})
         self.fps_callback()
@@ -56,8 +54,11 @@ class WebsocketStreamer(Sink, wsStreamCfg):
     def send(self, img: Tuple[np.ndarray, int], preds: dict[str, Any]):
         self._cur_data = (img, preds)
 
-    async def open(self):
+    async def open(self, formatters=None, **_):
         self._cur_data = None
+        self.formatters = (
+            formatters if isinstance(formatters, dict) else self.formatters
+        )
         self._encode = lambda im: encodeImg(im, **self.cv2_enc)
         self._wss = WebsocketServer(**self.wss)
         await self._wss.open()

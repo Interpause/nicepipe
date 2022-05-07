@@ -27,6 +27,11 @@ class nicepipeCfg:
     misc: miscCfg = field(default_factory=miscCfg)
 
 
+# TODO: Configuration System
+# copy template config folder to parent directory
+# add template config folder to search path
+# compose app config using both builtin and external config groups
+
 # TODO: actually merge defaults and accept CLI overrides
 def get_config(path="config.yml"):
     """
