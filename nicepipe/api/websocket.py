@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import json
 import asyncio
 import websockets
+from websockets.exceptions import ConnectionClosedError
 
 from ..utils import cancel_and_join
 
@@ -36,12 +37,15 @@ class WebsocketServer(wssCfg):
             # while not useful in this context, rate-limiting is possible
             async for msg in ws:
                 try:
-                    obj = json.loads(msg)
+                    # obj = json.loads(msg)
                     # TODO: interface for remote worker configure & control
                     # self.handler()
                     pass
                 except:
                     pass
+        except ConnectionClosedError:
+            # i dont care if the client suddenly gets nuked
+            pass
         finally:
             self.clients.remove(ws)
 
@@ -56,7 +60,9 @@ class WebsocketServer(wssCfg):
 
     async def open(self):
         self.wss = await websockets.serve(
-            ws_handler=self._register_client, host=self.host, port=self.port
+            ws_handler=self._register_client,
+            host=self.host,
+            port=self.port,
         )
         await self.wss.start_serving()
 

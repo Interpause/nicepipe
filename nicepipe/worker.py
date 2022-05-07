@@ -12,6 +12,8 @@ from .utils import WithFPSCallback, cancel_and_join, add_fps_counter
 
 log = logging.getLogger(__name__)
 
+# TODO: detect when workers die, close and await, print out the errors, and attempt to restart
+
 
 @dataclass
 class Worker(WithFPSCallback):
@@ -47,7 +49,7 @@ class Worker(WithFPSCallback):
         await asyncio.gather(
             self.source.open(),
             *[p.open() for p in self.predictors.values()],
-            *[s.open(formatters = self._formatters) for s in self.sinks.values()],
+            *[s.open(formatters=self._formatters) for s in self.sinks.values()],
         )
         self._task = asyncio.create_task(self._loop())
 

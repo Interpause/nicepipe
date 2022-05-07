@@ -13,6 +13,12 @@ from .base import Sink, baseSinkCfg
 
 log = logging.getLogger(__name__)
 
+# NOTE: socket.io volatile packets are explicitly not going to be implemented
+# the guy suggests to just add a callback to check if clients respond and dont
+# send to non-responsive clients.
+# Also socket.io-msgpack-parser isn't supported either yet.
+# Thats both easy performance gains off the table.
+
 
 @dataclass
 class sioStreamCfg(baseSinkCfg):
@@ -33,19 +39,19 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
         pass
 
     def on_disconnect(self, sid):
-        self.on_unsub_stream(sid, None)
+        self.on_unsub_stream(sid)
 
-    def on_sub_stream(self, sid, data):
+    def on_sub_stream(self, sid):
         if self.is_open:
             self.enter_room(sid, self.room_name)
             return 200  # OK
         return 503  # Service Unavailable
 
-    def on_unsub_stream(self, sid, data):
+    def on_unsub_stream(self, sid):
         self.leave_room(sid, self.room_name)
         return 200
 
-    def on_bing(self, sid, data):
+    def on_bing(self, sid):
         log.warning(sid)
         return "bong"
 
