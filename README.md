@@ -49,6 +49,13 @@ TODO: Insert planned architecture documentation.
 - Test logging and config merging
 - Integrating Sources, Predictors and Sinks from external packages
 
+### Live Configurability
+
+- Level 0: Reconfigure by restarting (Y)
+- Level 1: Reconfigure by closing worker, changing config & reopening (probably Y)
+- Level 2: Reconfigure by closing component, changing its config & reopening (almost Y)
+- Level 3: Reconfigure by changing config, internal state is live-updated. (N)
+
 ## Tips
 
 [Postman](https://www.postman.com/) is good for testing APIs. See <https://blog.postman.com/postman-now-supports-socket-io/>.
