@@ -56,7 +56,7 @@ class WebsocketServer(wssCfg):
             pass
 
     async def broadcast(self, event, obj):
-        await asyncio.gather(*[self.send_client(ws, event, obj) for ws in self.clients])
+        await asyncio.gather(*(self.send_client(ws, event, obj) for ws in self.clients))
 
     async def open(self):
         self.wss = await websockets.serve(

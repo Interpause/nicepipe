@@ -48,8 +48,8 @@ class Worker(WithFPSCallback):
 
         await asyncio.gather(
             self.source.open(),
-            *[p.open() for p in self.predictors.values()],
-            *[s.open(formatters=self._formatters) for s in self.sinks.values()],
+            *(p.open() for p in self.predictors.values()),
+            *(s.open(formatters=self._formatters) for s in self.sinks.values()),
         )
         self._task = asyncio.create_task(self._loop())
 
@@ -57,8 +57,8 @@ class Worker(WithFPSCallback):
         self._is_closing = True
         await asyncio.gather(
             cancel_and_join(self._task),
-            *[p.close() for p in self.predictors.values()],
-            *[s.close() for s in self.sinks.values()],
+            *(p.close() for p in self.predictors.values()),
+            *(s.close() for s in self.sinks.values()),
         )
 
     async def __aenter__(self):
