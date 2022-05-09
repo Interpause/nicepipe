@@ -41,6 +41,7 @@ class Worker(WithFPSCallback):
                 s.send(img, preds)
             if self._is_closing:
                 break
+        log.debug(f"{type(self).__name__} loop ended!")
 
     async def open(self):
         self._is_closing = False
@@ -52,14 +53,18 @@ class Worker(WithFPSCallback):
             *(s.open(formatters=self._formatters) for s in self.sinks.values()),
         )
         self._task = asyncio.create_task(self._loop())
+        log.debug(f"{type(self).__name__} opened!")
 
     async def close(self):
         self._is_closing = True
+        log.debug(f"{type(self).__name__} closing...")
         await asyncio.gather(
             cancel_and_join(self._task),
+            self.source.close(),
             *(p.close() for p in self.predictors.values()),
             *(s.close() for s in self.sinks.values()),
         )
+        log.debug(f"{type(self).__name__} closed!")
 
     async def __aenter__(self):
         await self.open()

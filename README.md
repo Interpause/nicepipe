@@ -47,6 +47,7 @@ TODO: Insert planned architecture documentation.
 
 - Test that AsyncioWorker has negligable IO time and non-zero output FPS
 - Test logging and config merging
+- All components can open & close correctly without hanging
 - Integrating Sources, Predictors and Sinks from external packages
 
 ### Live Configurability

@@ -95,6 +95,7 @@ class cv2CapSource(cv2CapCfg, Source):
 
     async def close(self):
         self._is_closing = True
+        log.debug("%s closing...", type(self).__name__)
         await gather(cancel_and_join(self._task), to_thread(self._cap.release))
         log.debug("%s closed!", type(self).__name__)
 

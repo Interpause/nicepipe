@@ -277,7 +277,7 @@ python-versions = ">=3.6"
 
 [[package]]
 name = "dearpygui"
-version = "1.6.1"
+version = "1.6.2"
 description = "DearPyGui: A simple Python GUI Toolkit"
 category = "main"
 optional = false
@@ -590,7 +590,7 @@ altgraph = ">=0.15"
 
 [[package]]
 name = "markdown"
-version = "3.3.6"
+version = "3.3.7"
 description = "Python implementation of Markdown."
 category = "main"
 optional = false
@@ -631,7 +631,7 @@ setuptools_scm = ">=4"
 
 [[package]]
 name = "mediapipe"
-version = "0.8.9.1"
+version = "0.8.10"
 description = "MediaPipe is the simplest way for researchers and developers to build world-class ML solutions and applications for mobile, edge, cloud and the web."
 category = "main"
 optional = false
@@ -1007,7 +1007,7 @@ rsa = ["oauthlib[signedtoken] (>=3.0.0)"]
 
 [[package]]
 name = "rich"
-version = "12.3.0"
+version = "12.4.0"
 description = "Render rich text, tables, progress bars, syntax highlighting, markdown and more to the terminal"
 category = "main"
 optional = false
@@ -1614,20 +1614,20 @@ cycler = [
     {file = "cycler-0.11.0.tar.gz", hash = "sha256:9c87405839a19696e837b3b818fed3f5f69f16f1eec1a1ad77e043dcea9c772f"},
 ]
 dearpygui = [
-    {file = "dearpygui-1.6.1-cp310-cp310-macosx_10_6_x86_64.whl", hash = "sha256:da27e6273921b68d1ec15c88beb3c875899263fc5c5a5adebea1d67e21e486be"},
-    {file = "dearpygui-1.6.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:4347c83a072d673200353c60fbace94a98ed9b3c9111348fa969e918e4de5ebe"},
-    {file = "dearpygui-1.6.1-cp310-cp310-manylinux1_x86_64.whl", hash = "sha256:847fe8f69642743e668b61e66a40bcc8092ece7fc4973029ce7ea28a5f11a0b0"},
-    {file = "dearpygui-1.6.1-cp310-cp310-win_amd64.whl", hash = "sha256:15ccd9d77384838e5ba21fe29255e3e14f0109a0051982901f86fb0d55c35e68"},
-    {file = "dearpygui-1.6.1-cp37-cp37m-macosx_10_6_x86_64.whl", hash = "sha256:1ffc00929262dbff8c626c9c3e7d3f7333f5e91390b7230cdf6e866c5e33ddbb"},
-    {file = "dearpygui-1.6.1-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:380da3fa67a7be4fc338adbc255eb4341e0981a454916d43900567d147c50504"},
-    {file = "dearpygui-1.6.1-cp37-cp37m-win_amd64.whl", hash = "sha256:1cb1c319e2cea731d82ba206a9f80e85e736ef642179dbd20cbfb9cd13f656a6"},
-    {file = "dearpygui-1.6.1-cp38-cp38-macosx_10_6_x86_64.whl", hash = "sha256:a3c2ca1d0c8ed11e3313290a032b879a050f66ecfe5c85b6e6eeafe120acdf59"},
-    {file = "dearpygui-1.6.1-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:8acdc5878c2f4c076165d6fca7576da851633b757a20d8b037f47f8565d17ba5"},
-    {file = "dearpygui-1.6.1-cp38-cp38-win_amd64.whl", hash = "sha256:fbebe49a744baad0eed0b6150971393d4577336a899643c11950eee7fa628df9"},
-    {file = "dearpygui-1.6.1-cp39-cp39-macosx_10_6_x86_64.whl", hash = "sha256:3358baf09c1cc2f903ff9731d5a3248f1277c477ad58e22930422c7739a40a1f"},
-    {file = "dearpygui-1.6.1-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:25d9f956dc9bf269e8dbd8235b12ad28431d6c7d6895d9b9a882397ed292208e"},
-    {file = "dearpygui-1.6.1-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:03532436f08506a9f31beeb423e385d76d120f5aaa2c4a316cf5b0928e7b4f90"},
-    {file = "dearpygui-1.6.1-cp39-cp39-win_amd64.whl", hash = "sha256:a4658859712f93919b4007a39a3d28998aa36f6e6c12c25bc84677e83029fa22"},
+    {file = "dearpygui-1.6.2-cp310-cp310-macosx_10_6_x86_64.whl", hash = "sha256:55f1034d431febc550935c71bad603afcccb6f2ac333a1ecb6d132df2fbfaef1"},
+    {file = "dearpygui-1.6.2-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:402618f3f523c8c368710b1fd6961c076a0096a6166927d2a3846f8b1b5df8bf"},
+    {file = "dearpygui-1.6.2-cp310-cp310-manylinux1_x86_64.whl", hash = "sha256:721a1bd6a95bc8c0da486116eeffc475799b39144c941f4af604d19d7d063d88"},
+    {file = "dearpygui-1.6.2-cp310-cp310-win_amd64.whl", hash = "sha256:54a3b692c6d20ead2d8c3d0358252803737043a83ebea03129024a6d77816df3"},
+    {file = "dearpygui-1.6.2-cp37-cp37m-macosx_10_6_x86_64.whl", hash = "sha256:57818d203639d2956ebe209669c371b8055e314971d6cac3ac3095d659f7ea4a"},
+    {file = "dearpygui-1.6.2-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:1ac323778cfb860281065a8ca9a1aae53ccb86ea92f55d0612305639eaa59bd5"},
+    {file = "dearpygui-1.6.2-cp37-cp37m-win_amd64.whl", hash = "sha256:6c842f71a930a93a076c549ae4e46ef482c918a350f8cd011a98d0a8774b925d"},
+    {file = "dearpygui-1.6.2-cp38-cp38-macosx_10_6_x86_64.whl", hash = "sha256:fd6218f1bfd5e4d8dad65dd8a148dc0526b2c14a552f5b662523632143a71ad9"},
+    {file = "dearpygui-1.6.2-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:398e2ccccab38092faa3d4ebf1c08d9898a516d626fa7b8aa026eef74fa4126f"},
+    {file = "dearpygui-1.6.2-cp38-cp38-win_amd64.whl", hash = "sha256:3260ce78879f22f5ca2345a4ee7f940ddd725527cdb3de16ab0fccdd79f88490"},
+    {file = "dearpygui-1.6.2-cp39-cp39-macosx_10_6_x86_64.whl", hash = "sha256:b92537106ce321cc1e3a830a6bbdc5ffc48120e2936120af45c87c41bd10a83c"},
+    {file = "dearpygui-1.6.2-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:3ea650b8c3fdf2076816d6e3374bb906c92394377c603bc119082a9e14828095"},
+    {file = "dearpygui-1.6.2-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:b0c77bd722eb0168c4ea30bf46e0b493ce398c7398e315996ab27535781dc99a"},
+    {file = "dearpygui-1.6.2-cp39-cp39-win_amd64.whl", hash = "sha256:7cf534cb7662e9f49ee93cb4ca34d6c245913b6dfb887d8a5e0b630597a34677"},
 ]
 dnspython = [
     {file = "dnspython-2.2.1-py3-none-any.whl", hash = "sha256:a851e51367fb93e9e1361732c1d60dab63eff98712e503ea7d92e6eccb109b4f"},
@@ -1961,8 +1961,8 @@ macholib = [
     {file = "macholib-1.16.tar.gz", hash = "sha256:001bf281279b986a66d7821790d734e61150d52f40c080899df8fefae056e9f7"},
 ]
 markdown = [
-    {file = "Markdown-3.3.6-py3-none-any.whl", hash = "sha256:9923332318f843411e9932237530df53162e29dc7a4e2b91e35764583c46c9a3"},
-    {file = "Markdown-3.3.6.tar.gz", hash = "sha256:76df8ae32294ec39dcf89340382882dfa12975f87f45c3ed1ecdb1e8cefc7006"},
+    {file = "Markdown-3.3.7-py3-none-any.whl", hash = "sha256:f5da449a6e1c989a4cea2631aa8ee67caa5a2ef855d551c88f9e309f4634c621"},
+    {file = "Markdown-3.3.7.tar.gz", hash = "sha256:cbb516f16218e643d8e0a95b309f77eb118cb138d39a4f27851e6a63581db874"},
 ]
 markupsafe = [
     {file = "MarkupSafe-2.1.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:86b1f75c4e7c2ac2ccdaec2b9022845dbb81880ca318bb7a0a01fbf7813e3812"},
@@ -2044,21 +2044,18 @@ matplotlib = [
     {file = "matplotlib-3.5.2.tar.gz", hash = "sha256:48cf850ce14fa18067f2d9e0d646763681948487a8080ec0af2686468b4607a2"},
 ]
 mediapipe = [
-    {file = "mediapipe-0.8.9.1-cp310-cp310-macosx_10_15_x86_64.whl", hash = "sha256:5725d5b5393c966d11d3a5346e385e3f3a75b0ed7fb437feb1cbed8592a0ceed"},
-    {file = "mediapipe-0.8.9.1-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:2cb270484071c7a8469b8107727a42696932fa9d8b8e9dcfe04ab8268bdc4bef"},
-    {file = "mediapipe-0.8.9.1-cp310-cp310-win_amd64.whl", hash = "sha256:6b34c83519bfaba787dd1914e0933b1ec2c4be340f8f99b21ccd989ca6227d8d"},
-    {file = "mediapipe-0.8.9.1-cp37-cp37m-macosx_10_15_x86_64.whl", hash = "sha256:36b38ac6d08684c7cdaa495a0bdc4002bb19e21bd38b0631999c6f219cac7861"},
-    {file = "mediapipe-0.8.9.1-cp37-cp37m-manylinux2014_aarch64.whl", hash = "sha256:dfd7f3c5bcd753cbde2ba345097656701f21f9c9e58270a08aa679b4dbce3bb8"},
-    {file = "mediapipe-0.8.9.1-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d8228dde9f347a8b979a785d4f02ced23adcec004856161465836741e79a96f1"},
-    {file = "mediapipe-0.8.9.1-cp37-cp37m-win_amd64.whl", hash = "sha256:97550e319484f22dbf68dcaf40288fe6eadd270657e5c87579e0cc347ec5a589"},
-    {file = "mediapipe-0.8.9.1-cp38-cp38-macosx_10_15_x86_64.whl", hash = "sha256:4d10fffc5effe53f125bb587a6425ff981aae9d25876842e10d531fb52ed21db"},
-    {file = "mediapipe-0.8.9.1-cp38-cp38-manylinux2014_aarch64.whl", hash = "sha256:26b412b7c3642528f5f8505d94e620c1d26199b2c01d991a5c5cb4f313494da7"},
-    {file = "mediapipe-0.8.9.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:98d9d36808e4b15d8b5c6a96d7b304f237e45118f0969efef1427a0ac3de8254"},
-    {file = "mediapipe-0.8.9.1-cp38-cp38-win_amd64.whl", hash = "sha256:36f48347067b1684012e991412336262cba7899c427b234c8eea495d883698e0"},
-    {file = "mediapipe-0.8.9.1-cp39-cp39-macosx_10_15_x86_64.whl", hash = "sha256:e7a370faa2cd2907c3aa3351fea284b776e16aafd24f1069d4c261b0b3bd367f"},
-    {file = "mediapipe-0.8.9.1-cp39-cp39-manylinux2014_aarch64.whl", hash = "sha256:0b180bf0f6b315bc9dce60979917b8db89b19ab33100763a2929bd576c3c6166"},
-    {file = "mediapipe-0.8.9.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:319c727ef2fd633ba47d702fdfc610304a16f87c649be63730a9d3e7f015100c"},
-    {file = "mediapipe-0.8.9.1-cp39-cp39-win_amd64.whl", hash = "sha256:7c35fc14b22a0dbe1bf4ceffe8dc8c2fb94896130e98df0e3d15fd956e973641"},
+    {file = "mediapipe-0.8.10-cp310-cp310-macosx_10_15_x86_64.whl", hash = "sha256:65c6c8484783df1b9a9871900fee657adbfe6627ac6a06b5af65a0aa03f0b714"},
+    {file = "mediapipe-0.8.10-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a3236c7b34f98d31cf254555f42de7346c94585a0e47435e2fa2f12d13bc6ca1"},
+    {file = "mediapipe-0.8.10-cp310-cp310-win_amd64.whl", hash = "sha256:01f8e0bd3ef81fc9f5091b1990632a0274f6e5cb095f2f74daa9dac7e955e4a2"},
+    {file = "mediapipe-0.8.10-cp37-cp37m-macosx_10_15_x86_64.whl", hash = "sha256:1ff3970f76dffbb16e04b1e0ba73fa6368e0d3fa4c0b6049dcbf58a3284347db"},
+    {file = "mediapipe-0.8.10-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:bc60486f5924d8c12caa41a22bb8e4389eb26477e757734897f76d08eea4d13b"},
+    {file = "mediapipe-0.8.10-cp37-cp37m-win_amd64.whl", hash = "sha256:0b55aae8f0ff7fe7da9b8d514cf0aa033866ea00f03dcac9ea65a5b04990d5c5"},
+    {file = "mediapipe-0.8.10-cp38-cp38-macosx_10_15_x86_64.whl", hash = "sha256:9f4db546d82a9fa05b7f2a0de77cb67abffe971ce03f9b3032977838de4e1870"},
+    {file = "mediapipe-0.8.10-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:7f6b584804eb65048ec394f496b79d87b30629adf8b9f16f395840b067515df6"},
+    {file = "mediapipe-0.8.10-cp38-cp38-win_amd64.whl", hash = "sha256:6f737950017abc47fa11f8b79737aac28124298b3f039342cdfe6f8c6c0857a4"},
+    {file = "mediapipe-0.8.10-cp39-cp39-macosx_10_15_x86_64.whl", hash = "sha256:65bf04ef1c742bf3d0596719e9dc4298b295a2b8dbf341df8a4039376483d3ee"},
+    {file = "mediapipe-0.8.10-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:5ffa89a718ef3c507e67e4de592173675740e4ae6164f807e5a9bff64f1e86a0"},
+    {file = "mediapipe-0.8.10-cp39-cp39-win_amd64.whl", hash = "sha256:3bdfa6758110f233352b3c9ce7210d0ef7f0da741387702cd9222d3785a5aadf"},
 ]
 mypy-extensions = [
     {file = "mypy_extensions-0.4.3-py2.py3-none-any.whl", hash = "sha256:090fedd75945a69ae91ce1303b5824f428daf5a028d2f6ab8a299250a846f15d"},
@@ -2391,8 +2388,8 @@ requests-oauthlib = [
     {file = "requests_oauthlib-1.3.1-py2.py3-none-any.whl", hash = "sha256:2577c501a2fb8d05a304c09d090d6e47c306fef15809d102b327cf8364bddab5"},
 ]
 rich = [
-    {file = "rich-12.3.0-py3-none-any.whl", hash = "sha256:0eb63013630c6ee1237e0e395d51cb23513de6b5531235e33889e8842bdf3a6f"},
-    {file = "rich-12.3.0.tar.gz", hash = "sha256:7e8700cda776337036a712ff0495b04052fb5f957c7dfb8df997f88350044b64"},
+    {file = "rich-12.4.0-py3-none-any.whl", hash = "sha256:fdf6f447f231289dd446d31e5ee856fb0cc7dccd852a80f3e9d5aeecccabaedc"},
+    {file = "rich-12.4.0.tar.gz", hash = "sha256:7aebf67874dc5cc2c89e2cb6ac322c95bd92510df2af0296c8bf494335ef704f"},
 ]
 rodi = [
     {file = "rodi-1.1.3-py3-none-any.whl", hash = "sha256:d30a34b5dd15200754bccf84cbd57d8be2bcf1da65510b6439d1922c2a185844"},

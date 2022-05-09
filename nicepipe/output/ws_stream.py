@@ -63,6 +63,9 @@ class WebsocketStreamer(Sink, wsStreamCfg):
         self._wss = WebsocketServer(**self.wss)
         await self._wss.open()
         self._task = set_interval(self._loop, self.max_fps)
+        log.debug(f"{type(self).__name__} opened!")
 
     async def close(self):
+        log.debug(f"{type(self).__name__} closing...")
         await asyncio.gather(cancel_and_join(self._task), self._wss.close())
+        log.debug(f"{type(self).__name__} closed!")

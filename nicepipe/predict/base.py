@@ -3,14 +3,17 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Generic, Protocol, Tuple, TypeVar, Union
 from dataclasses import dataclass, field
+import logging
 
 from numpy import ndarray
-from asyncio import Task, run as async_run, gather, create_task, to_thread
+from asyncio import Task, run as async_run, create_task, to_thread
 from multiprocessing import Pipe, Process
 from multiprocessing.connection import Connection
 
-from ..utils import rlloop, WithFPSCallback
+from ..utils import cancel_and_join, rlloop, WithFPSCallback
 import nicepipe.utils.uvloop  # use uvloop for child process asyncio loop
+
+log = logging.getLogger(__name__)
 
 IT = TypeVar("IT")
 OT = TypeVar("OT")
@@ -113,7 +116,7 @@ class PredictionWorker(predictionWorkerCfg, WithFPSCallback):
     """current output"""
     is_closing: bool = False
     """flag to break loop"""
-    loop_task: Task = None
+    loop_tasks: list[Task] = None
     """main task for both IO loops"""
 
     # multiprocessing
@@ -156,13 +159,16 @@ class PredictionWorker(predictionWorkerCfg, WithFPSCallback):
             target=self.predictor.begin, args=(child_pipe,), daemon=True
         )
         self.process.start()
-        self.loop_task = gather(self._in_loop(), self._out_loop())
+        self.loop_tasks = (create_task(self._in_loop()), create_task(self._out_loop()))
+        log.debug(f"{type(self.predictor).__name__} worker opened!")
 
     async def close(self):
         self.is_closing = True
-        await self.loop_task
+        log.debug(f"{type(self.predictor).__name__} worker closing...")
+        await cancel_and_join(*self.loop_tasks)
         self.process.terminate()
-        await to_thread(self.process.join)
+        # await to_thread(self.process.join)
+        log.debug(f"{type(self.predictor).__name__} worked closed!")
 
     async def __aenter__(self):
         await self.open()

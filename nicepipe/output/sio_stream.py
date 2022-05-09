@@ -165,12 +165,15 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
         self._rtc_conns: dict[str, RTCPeerConnection] = {}
         self._encode = lambda im: encodeImg(im, **self.cv2_enc)
         self._task = set_interval(self._loop, self.max_fps)
+        log.debug(f"{type(self).__name__} opened!")
 
     async def close(self):
         self.is_open = False
+        log.debug(f"{type(self).__name__} closing...")
         await self.emit("close", room=self.room_name)
         await asyncio.gather(
             self.close_room(self.room_name),
             cancel_and_join(self._task),
             *(c.close() for c in self._rtc_conns.values()),
         )
+        log.debug(f"{type(self).__name__} closed!")
