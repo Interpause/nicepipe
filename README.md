@@ -43,6 +43,18 @@ TODO: Insert planned architecture documentation.
 - Refactor out async utils such as rate-limited loops, set_interval, set_timeout, cancel_and_join, etc
 - Refactor out pip CUDA hack
 
+## TODO
+
+- `to_thread()` has cost. better to use for one large sync jobs than for many tiny parts in a large async job.
+  - basically evaluate when async functions make sense vs sync functions, then wrap the main sync loops in jobs
+  - might have to reevaluate base predictionworker structure
+    - for example, allow sync io processor functions since they will be wrapped by to_thread
+  - need sync version of rlloop for sync loops
+  - might ease transition if we ever choose to use non-GIL python
+    - but then we might have to worry about locks...
+    - the performance tho...e
+- rename predictor to analyzer. Finally a name that makes more sense than calculator.
+
 ## Tests Possible
 
 - Test that AsyncioWorker has negligable IO time and non-zero output FPS
