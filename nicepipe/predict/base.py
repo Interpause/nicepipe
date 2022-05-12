@@ -27,6 +27,14 @@ class CallableWithExtra(Generic[IT, OT], Protocol):
         return input, extra
 
 
+async def passthrough_extra(input, **extra):
+    return input, extra
+
+
+async def passthrough(input, **extra):
+    return input
+
+
 class BasePredictor(ABC):
     """Abstract class to run models as separate processes."""
 
@@ -97,16 +105,12 @@ class PredictionWorker(predictionWorkerCfg, WithFPSCallback):
 
     # data processing
     process_input: CallableWithExtra[ndarray, Tuple[ndarray, dict]] = field(
-        default_factory=CallableWithExtra
+        default=passthrough_extra
     )
     """Used for input preprocessing on the main thread, notably ensuring input is picklable."""
-    process_output: CallableWithExtra[Any, Any] = field(
-        default_factory=CallableWithExtra
-    )
+    process_output: CallableWithExtra[Any, Any] = field(default=passthrough)
     """Used for output postprocessing in the child process, notably deserializing output."""
-    format_output: CallableWithExtra[Any, JSONPrimitives] = field(
-        default_factory=CallableWithExtra
-    )
+    format_output: CallableWithExtra[Any, JSONPrimitives] = field(default=passthrough)
     """Used to ensure output can be JSON serialized at least."""
 
     # variables
