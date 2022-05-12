@@ -17,6 +17,7 @@ __all__ = [
     "encodeJPG",
     "encodeImg",
     "trim_task_queue",
+    "reraise_errors",
     "cancel_and_join",
     "WithFPSCallback",
     "add_fps_counter",
@@ -59,6 +60,22 @@ class WithFPSCallback:
     """callback for updating FPS counter"""
 
 
+async def gather_and_reraise(*tasks: Task, ignored=[]):
+    """Wraps asyncio.gather to make sure all tasks complete before reraising errors."""
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    errors = tuple(
+        r
+        for r in results
+        if isinstance(r, Exception) and not any(isinstance(r, e) for e in ignored)
+    )
+    if len(errors) == 0:
+        return results
+    elif len(errors) == 1:
+        raise errors[0]
+    else:
+        raise Exception(errors)
+
+
 async def cancel_and_join(
     *tasks: Task, reraise=True, ignored=[CancelledError, KeyboardInterrupt]
 ):
@@ -67,19 +84,10 @@ async def cancel_and_join(
         return
     for task in tasks:
         task.cancel()
-    results = await asyncio.gather(*tasks, return_exceptions=True)
     if reraise:
-        errors = tuple(
-            r
-            for r in results
-            if isinstance(r, Exception) and not any(isinstance(r, e) for e in ignored)
-        )
-        if len(errors) == 0:
-            return
-        elif len(errors) == 1:
-            raise errors[0]
-        else:
-            raise Exception(errors)
+        await gather_and_reraise(*tasks, ignored=ignored)
+    else:
+        await asyncio.gather(*tasks, return_exceptions=True)
 
 
 async def trim_task_queue(tasks: Deque[Task], maxlen: int):

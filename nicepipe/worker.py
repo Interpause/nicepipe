@@ -8,7 +8,7 @@ from .input import cv2CapSource
 from .predict import PredictionWorker, create_predictors
 from .input import Source
 from .output import Sink, create_sinks
-from .utils import WithFPSCallback, cancel_and_join, add_fps_counter
+from .utils import WithFPSCallback, cancel_and_join, add_fps_counter, gather_and_reraise
 
 log = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ class Worker(WithFPSCallback):
         self._is_closing = False
         self._formatters = {n: p.format_output for n, p in self.predictors.items()}
 
-        await asyncio.gather(
+        await gather_and_reraise(
             self.source.open(),
             *(p.open() for p in self.predictors.values()),
             *(s.open(formatters=self._formatters) for s in self.sinks.values()),
@@ -58,12 +58,15 @@ class Worker(WithFPSCallback):
     async def close(self):
         self._is_closing = True
         log.debug(f"{type(self).__name__} closing...")
-        await asyncio.gather(
-            cancel_and_join(self._task),
-            self.source.close(),
-            *(p.close() for p in self.predictors.values()),
-            *(s.close() for s in self.sinks.values()),
-        )
+        try:
+            await gather_and_reraise(
+                cancel_and_join(self._task),
+                self.source.close(),
+                *(p.close() for p in self.predictors.values()),
+                *(s.close() for s in self.sinks.values()),
+            )
+        except Exception as e:
+            log.error(e, exc_info=True)
         log.debug(f"{type(self).__name__} closed!")
 
     async def __aenter__(self):

@@ -89,6 +89,8 @@ I already tried to resolve most of them. There is one caused by `poethepoet` (<h
 
 I have ensured at least that the Worker can start and stop without error messages. KeyboardInterrupt is a bit more iffy.
 
+Why is asyncio error handling so hard? That said, I've probably created quite a thorough system for it by wrapping common convenience functions. I don't get why the default asyncio functions are so intent on leaving tasks orphaned. Shutdown is 100% smooth now though, worth it.
+
 ~If only Python's API allowed me to easily treat async and sync variants of functions and iterators as the same, right now a lot of utils are awkward to write as separate variants are needed for both. is there a function to auto-convert sync stuff to async (maybe use to_thread) while ignoring async stuff?~
 
 ~Python really needs a way to be ultra flexible about kwargs~

@@ -1,14 +1,14 @@
 from __future__ import annotations
 from typing import Any, Literal, Tuple
 from dataclasses import dataclass
-from asyncio import create_task, gather, to_thread, sleep
+from asyncio import create_task, to_thread, sleep
 import logging
 
 import cv2
 import numpy as np
 
 from .base import Source
-from ..utils import cancel_and_join
+from ..utils import cancel_and_join, gather_and_reraise
 
 log = logging.getLogger(__name__)
 
@@ -96,7 +96,10 @@ class cv2CapSource(cv2CapCfg, Source):
     async def close(self):
         self._is_closing = True
         log.debug("%s closing...", type(self).__name__)
-        await gather(cancel_and_join(self._task), to_thread(self._cap.release))
+        await gather_and_reraise(
+            cancel_and_join(self._task),
+            to_thread(self._cap.release),
+        )
         log.debug("%s closed!", type(self).__name__)
 
 

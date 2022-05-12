@@ -15,7 +15,13 @@ from aiortc import (
 )
 from av import VideoFrame
 
-from ..utils import cancel_and_join, encodeImg, cv2EncCfg, set_interval
+from ..utils import (
+    cancel_and_join,
+    encodeImg,
+    cv2EncCfg,
+    gather_and_reraise,
+    set_interval,
+)
 from ..predict import PredictionWorker
 from .base import Sink, baseSinkCfg
 
@@ -171,7 +177,7 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
         self.is_open = False
         log.debug(f"{type(self).__name__} closing...")
         await self.emit("close", room=self.room_name)
-        await asyncio.gather(
+        await gather_and_reraise(
             self.close_room(self.room_name),
             cancel_and_join(self._task),
             *(c.close() for c in self._rtc_conns.values()),
