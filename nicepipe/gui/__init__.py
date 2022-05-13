@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import cv2
 import dearpygui.dearpygui as dpg
 
 # from dearpygui_ext.logger import mvLogger
@@ -38,6 +39,15 @@ async def gui_loop(render):
             # for some reason, breaking here destroys some child process sufficiently
             # to crash the main process. It probably is dpg's process, not mine.
             continue
+
+
+def draw_point(img, pt, color, size=2):
+    x, y = int(pt[0]), int(pt[1])
+    x1 = max(0, x - size)
+    x2 = min(img.shape[1], x + size)
+    y1 = max(0, y - size)
+    y2 = min(img.shape[0], y + size)
+    img[y1:y2, x1:x2, :] = color
 
 
 def show_camera():
@@ -85,6 +95,16 @@ def show_camera():
                     mp_pose.POSE_CONNECTIONS,
                     landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style(),
                 )
+            kp_results = preds.get("kp", None)
+            if not kp_results is None:
+                for (name, rect) in kp_results["dets"]:
+                    cv2.polylines(imbuffer, [np.int32(rect)], True, 255, 3, cv2.LINE_AA)
+                if "debug" in kp_results:
+                    debug_kp = kp_results["debug"]
+                    for pt in debug_kp["all_kp"]:
+                        draw_point(imbuffer, pt, (255, 0, 0))
+                    for pt in debug_kp["matched_kp"]:
+                        draw_point(imbuffer, pt, (0, 255, 0))
 
     return GUIStreamer, window
 
