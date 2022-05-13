@@ -17,6 +17,7 @@ class miscCfg:
     skip_tests: bool = False
     log_level: int = logging.INFO
     save_logs: bool = True
+    console_live_display: bool = True
 
 
 @dataclass

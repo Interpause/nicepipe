@@ -68,13 +68,15 @@ async def loop(cfg: nicepipeCfg):
             sio.register_namespace(worker.sinks["sio"])
 
             async with worker:
-                resume_task = asyncio.create_task(resume_live_display())
+                if cfg.misc.console_live_display:
+                    resume_task = asyncio.create_task(resume_live_display())
+
                 async for _ in rlloop(5):
                     if not dpg.is_dearpygui_running():
                         break
-                await cancel_and_join(
-                    resume_task,
-                )
+
+                if cfg.misc.console_live_display:
+                    await cancel_and_join(resume_task)
                 rich_live_display.stop()
 
 
