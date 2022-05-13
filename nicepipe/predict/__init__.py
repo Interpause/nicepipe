@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Any, Optional
 from dataclasses import dataclass, field
 
-from nicepipe.predict.yolo import create_yolo_worker
+# from nicepipe.predict.yolo import create_yolo_worker
 from nicepipe.predict.kp import kpDetCfg, create_kp_worker
 from nicepipe.predict.mp_pose import mpPoseWorkerCfg, create_mp_pose_worker
 from ..utils import add_fps_counter
@@ -33,8 +33,8 @@ def create_predictors(
     predictors: dict[str, PredictionWorker] = {}
     if cfg.mp_pose:
         predictors["mp_pose"] = create_mp_pose_worker(**cfg.mp_pose)
-    if cfg.clothes:
-        predictors["clothes"] = create_yolo_worker(**cfg.clothes)
+    # if cfg.clothes:
+    #     predictors["clothes"] = create_yolo_worker(**cfg.clothes)
     if cfg.kp:
         predictors["kp"] = create_kp_worker(**cfg.kp)
 

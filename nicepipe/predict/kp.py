@@ -50,13 +50,13 @@ class orbCfg:
 @dataclass
 class queryDetCfg(orbCfg):
     # dont need as many features for query images
-    nfeatures: int = 200
+    nfeatures: int = 1000
 
 
 @dataclass
 class testDetCfg(orbCfg):
     # test images will naturally have more potential features
-    nfeatures: int = 2000
+    nfeatures: int = 10000
 
 
 @dataclass
@@ -162,7 +162,8 @@ class KPDetPredictor(BasePredictor, kpDetCfg):
 
         for name, path in self.img_map.items():
             # TODO: a resolver function
-            im = cv2.imread(str(ORIGINAL_CWD / path), cv2.IMREAD_GRAYSCALE)
+            path = str(ORIGINAL_CWD / path)
+            im = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
             assert not im is None, f"Failed to read image {name} from {path}"
             self.features[name] = calc_features(self.detector, im)
 
@@ -177,7 +178,12 @@ class KPDetPredictor(BasePredictor, kpDetCfg):
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         t_kp, t_desc, _, _ = calc_features(self.detector, img)
 
+        o = {}
         results = []
+        o["dets"] = results
+        if len(t_kp) == 0:
+            return o
+
         matched_kp = []
         for name, (q_kp, q_desc, qh, qw) in self.features.items():
             pairs = self.matcher.knnMatch(
@@ -245,6 +251,5 @@ if __name__ == "__main__":
     results = predictor.predict(test_im)
     for (name, rect) in results["dets"]:
         preview = cv2.polylines(test_im, [np.int32(rect)], True, 255, 3, cv2.LINE_AA)
-        cv2.imshow("kp_test", preview)
-        cv2.waitKey(0)
-    cv2.destroyAllWindows()
+        # cv2.imshow("kp_test", preview)
+    # cv2.destroyAllWindows()

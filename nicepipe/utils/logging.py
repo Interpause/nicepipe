@@ -142,7 +142,9 @@ def enable_fancy_console(start_live=True, log_level=logging.DEBUG):
         live.stop()
 
 
-ORIGINAL_CWD = Path.cwd()
+# on Linux which uses forking, there is no problem here
+# on Windows, child processes may fail to get the original cwd because the module is reimported
+ORIGINAL_CWD = Path.cwd().resolve()
 
 
 @contextmanager

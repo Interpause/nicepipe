@@ -12,7 +12,7 @@ readme = "README.md"
 # 1. instead of returning 404 for packages it doesn't have, PyTorch's index returns 403.
 # 2. Poetry doesn't know how to deal with +tags on the version.
 # See https://github.com/python-poetry/poetry/issues/2543
-install-torch = "pip install torch==1.11.0+cu115 torchvision==0.12.0+cu115 -f https://download.pytorch.org/whl/torch_stable.html"
+install-torch = "pip install torch==1.11+cu115 torchvision==0.12+cu115 -f https://download.pytorch.org/whl/torch_stable.html"
 build-windows-minimal = """\
 pyinstaller nicepipe\\__main__.py \
 --name nicepipe \
@@ -22,6 +22,7 @@ pyinstaller nicepipe\\__main__.py \
 --collect-data mediapipe \
 --exclude-module uvloop \
 --exclude-module tensorflow \
+--exclude-module nicepipe.predict.yolo \
 --exclude-module nicepipe.utils.cuda\
 """
 build-windows = """\
@@ -67,11 +68,11 @@ dev = "python -m nicepipe"
 [tool.poetry.dependencies]
 python = ">=3.9,<3.10"
 numpy = "^1.22.3"
-opencv-contrib-python = "^4.5.5"
+opencv-contrib-python = "^4.5.5" # something pulls in contrib as a dependency so might as well use it
 protobuf = "^3.20.0"
 mediapipe = "^0.8.9.1"
 uvloop = {version = "^0.16.0", platform = "linux"}
-tensorflow = "^2.8.0"
+# tensorflow = "^2.8.0"
 rich = "^12.2.0"
 uvicorn = {extras = ["standard"], version = "^0.17.6"}
 omegaconf = "^2.2.0"
@@ -80,12 +81,12 @@ python-socketio = "^5.6.0"
 blacksheep = "^1.2.6"
 aiortc = "^1.3.2"
 av = "^9.2.0"
-onnxruntime = "^1.11.1"
-onnxruntime-gpu = "^1.11.1"
+# onnxruntime = "^1.11.1"
+# onnxruntime-gpu = "^1.11.1"
 
 [tool.poetry.group.dev.dependencies]
 poethepoet = "^0.13.1"
-line-profiler = "^3.5.1"
+# line-profiler = "^3.5.1"
 pyinstaller = "^4.10"
 black = "^22.3.0"
 
