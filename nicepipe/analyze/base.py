@@ -1,6 +1,7 @@
 """Base/template for analyzers."""
 from __future__ import annotations
 from abc import ABC, abstractmethod
+from collections import deque
 from typing import Any, Generic, Protocol, Tuple, TypeVar, Union
 from dataclasses import dataclass, field
 import logging
@@ -11,7 +12,7 @@ from asyncio import Task, run as async_run, create_task, to_thread
 from multiprocessing import Pipe, Process
 from multiprocessing.connection import Connection
 
-from ..utils import cancel_and_join, rlloop, WithFPSCallback
+from ..utils import cancel_and_join, rlloop, WithFPSCallback, trim_task_queue
 import nicepipe.utils.uvloop  # use uvloop for child process asyncio loop
 
 log = logging.getLogger(__name__)
@@ -66,18 +67,19 @@ class BaseAnalyzer(ABC):
             self.cleanup()
 
     async def _loop(self):
+        tasks = deque()
         while True:
+            img, extra = await to_thread(self.pipe.recv)
             try:
-                # send & receive concurrently for performance
-                # have measured over 1 min averaging period that async is faster
-                img, extra = await to_thread(self.pipe.recv)
-                results = await to_thread(self.analyze, img, **extra)
-                # don't await, unlikely to accumulate
-                create_task(to_thread(self.pipe.send, results))
+                results = (0, await to_thread(self.analyze, img, **extra))
             except Exception as e:
-                # even tho we cant fancy log it, dont just let it go
-                traceback.print_tb(e.__traceback__)
-                # yeah also resume looping instead of 100% dying
+                results = (1, e)  # pass exception back
+
+            # send & receive concurrently for performance
+            # have measured over 1 min averaging period that async is faster
+            # potential memory leak if not trimmed
+            tasks.append(create_task(to_thread(self.pipe.send, results)))
+            await trim_task_queue(tasks, 60)
 
 
 @dataclass
@@ -150,7 +152,10 @@ class AnalysisWorker(AnalysisWorkerCfg, WithFPSCallback):
     async def _out_loop(self):
         """loop for receiving outputs from child process"""
         while not self.is_closing:
-            output = await to_thread(self.pipe.recv)
+            err, output = await to_thread(self.pipe.recv)
+            if err:
+                log.error(f"{type(self.analyzer).__name__} error", exc_info=output)
+                continue
             self.current_output = await self.process_output(output)
             self.fps_callback()
 

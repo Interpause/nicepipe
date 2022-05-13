@@ -66,7 +66,9 @@ class Worker(WithFPSCallback):
                 *(s.close() for s in self.sinks.values()),
             )
         except Exception as e:
-            log.error(e, exc_info=True)
+            errors = (e,) if type(e.args[0]) == "str" else e.args
+            for err in errors:
+                log.error(f"{type(self).__name__} error during close", exc_info=err)
         log.debug(f"{type(self).__name__} closed!")
 
     async def __aenter__(self):

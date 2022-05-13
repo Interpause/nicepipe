@@ -73,7 +73,7 @@ async def gather_and_reraise(*tasks: Task, ignored=[]):
     elif len(errors) == 1:
         raise errors[0]
     else:
-        raise Exception(errors)
+        raise Exception(*errors)
 
 
 async def cancel_and_join(
