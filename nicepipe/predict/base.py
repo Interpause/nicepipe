@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Generic, Protocol, Tuple, TypeVar, Union
 from dataclasses import dataclass, field
 import logging
+import traceback
 
 from numpy import ndarray
 from asyncio import Task, run as async_run, create_task, to_thread
@@ -66,12 +67,17 @@ class BasePredictor(ABC):
 
     async def _loop(self):
         while True:
-            # send & receive concurrently for performance
-            # have measured over 1 min averaging period that async is faster
-            img, extra = await to_thread(self.pipe.recv)
-            results = await to_thread(self.predict, img, **extra)
-            # don't await, unlikely to accumulate
-            create_task(to_thread(self.pipe.send, results))
+            try:
+                # send & receive concurrently for performance
+                # have measured over 1 min averaging period that async is faster
+                img, extra = await to_thread(self.pipe.recv)
+                results = await to_thread(self.predict, img, **extra)
+                # don't await, unlikely to accumulate
+                create_task(to_thread(self.pipe.send, results))
+            except Exception as e:
+                # even tho we cant fancy log it, dont just let it go
+                traceback.print_tb(e.__traceback__)
+                # yeah also resume looping instead of 100% dying
 
 
 @dataclass
