@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nicepipe"
-version = "0.4.2"
+version = "0.5.0"
 description = "remote worker for video inference"
 license = "Proprietary"
 authors = ["John-Henry Lim <42513874+Interpause@users.noreply.github.com>"]
@@ -22,7 +22,7 @@ pyinstaller nicepipe\\__main__.py \
 --collect-data mediapipe \
 --exclude-module uvloop \
 --exclude-module tensorflow \
---exclude-module nicepipe.predict.yolo \
+--exclude-module nicepipe.analyze.yolo \
 --exclude-module nicepipe.utils.cuda\
 """
 build-windows = """\

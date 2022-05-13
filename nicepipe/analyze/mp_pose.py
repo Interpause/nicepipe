@@ -9,7 +9,7 @@ from mediapipe.python.solutions.pose import Pose as MpPose
 import mediapipe.framework.formats.landmark_pb2 as landmark_pb2
 import google.protobuf.json_format as pb_json
 
-from .base import BasePredictor, PredictionWorker, predictionWorkerCfg
+from .base import BaseAnalyzer, AnalysisWorker, AnalysisWorkerCfg
 from ..utils import encodeJPG
 
 
@@ -31,7 +31,7 @@ class mpPoseCfg:
 
 
 @dataclass
-class mpPoseWorkerCfg(predictionWorkerCfg):
+class mpPoseWorkerCfg(AnalysisWorkerCfg):
     cfg: mpPoseCfg = field(default_factory=mpPoseCfg)
     scale_wh: Optional[Tuple[int, int]] = (640, 360)
 
@@ -81,7 +81,7 @@ async def prep_send_mp_results(results: SimpleNamespace, img_encoder=encodeJPG, 
 
 
 @dataclass
-class MPPosePredictor(BasePredictor):
+class MPPosePredictor(BaseAnalyzer):
     cfg: dict
     """MediaPipe Pose config, see https://google.github.io/mediapipe/solutions/pose.html#cross-platform-configuration-options."""
 
@@ -91,7 +91,7 @@ class MPPosePredictor(BasePredictor):
     def cleanup(self):
         self.mpp.close()
 
-    def predict(self, img, **_):
+    def analyze(self, img, **_):
         img = img[..., ::-1]  # BGR to RGB
         results = self.mpp.process(img)
         serialized = serialize_mp_results(results)
@@ -104,8 +104,8 @@ def create_mp_pose_worker(cfg=mpPoseCfg(), scale_wh=mpPoseWorkerCfg.scale_wh, **
             return img, extra
         return await asyncio.to_thread(cv2.resize, img, scale_wh), extra
 
-    return PredictionWorker(
-        predictor=MPPosePredictor(cfg),
+    return AnalysisWorker(
+        analyzer=MPPosePredictor(cfg),
         process_input=process_input,
         process_output=deserialize_mp_results,
         format_output=prep_send_mp_results,

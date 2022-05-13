@@ -22,7 +22,7 @@ from ..utils import (
     gather_and_reraise,
     set_interval,
 )
-from ..predict import PredictionWorker
+from ..analyze import AnalysisWorker
 from .base import Sink, baseSinkCfg
 
 log = logging.getLogger(__name__)
@@ -64,8 +64,8 @@ class sioStreamCfg(baseSinkCfg):
 class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
     """Stream output over socketio. See https://python-socketio.readthedocs.io/en/latest/server.html#class-based-namespaces."""
 
-    formatters: dict[str, PredictionWorker] = field(default_factory=dict)
-    """formatters are needed in order to jsonify predictions from each."""
+    formatters: dict[str, AnalysisWorker] = field(default_factory=dict)
+    """formatters are needed in order to jsonify analysis from each."""
     livestream_track: LiveStreamTrack = field(default_factory=LiveStreamTrack)
 
     def on_connect(self, sid, environ, auth):
@@ -93,7 +93,7 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
         client_sdp = RTCSessionDescription(**sdp)
 
         conn = RTCPeerConnection(configuration=RTCConfiguration(iceServers=[]))
-        # chn = conn.createDataChannel("preds")
+        # chn = conn.createDataChannel("data")
         conn.addTrack(self.livestream_track)
         self._rtc_conns[sid] = conn
 
@@ -134,7 +134,7 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
 
     async def _loop(self):
         try:
-            img, preds = self._cur_data
+            img, data = self._cur_data
         except (AttributeError, TypeError):
             return
         try:
@@ -150,17 +150,17 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
 
         # We running into the Python object caching issue again!
         out = {}
-        for name, data in preds.items():
-            if data is None:
+        for name, datum in data.items():
+            if datum is None:
                 continue
 
-            out[name] = await self.formatters[name](data, img_encoder=self._encode)
+            out[name] = await self.formatters[name](datum, img_encoder=self._encode)
 
-        await self.emit("frame", {"img": img, "preds": out}, room=self.room_name)
+        await self.emit("frame", {"img": img, "data": out}, room=self.room_name)
         self.fps_callback()
 
-    def send(self, img: Tuple[np.ndarray, int], preds: dict[str, Any]):
-        self._cur_data = (img, preds)
+    def send(self, img: Tuple[np.ndarray, int], data: dict[str, Any]):
+        self._cur_data = (img, data)
 
     async def open(self, formatters=None, **_):
         self.is_open = True

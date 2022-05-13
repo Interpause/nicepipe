@@ -24,7 +24,7 @@ class Sink(ABC, baseSinkCfg, WithFPSCallback):
     """Abstract class for output sources."""
 
     @abstractmethod
-    def send(img: Tuple[np.ndarray, int], preds: dict[str, Any]):
+    def send(img: Tuple[np.ndarray, int], data: dict[str, Any]):
         pass
 
     @abstractmethod

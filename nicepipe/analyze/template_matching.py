@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 
 import cv2
 import numpy as np
-from .base import BasePredictor
+from .base import BaseAnalyzer
 
 
 def scale_image(image, target_wh):
@@ -31,7 +31,7 @@ def scale_image(image, target_wh):
 
 
 @dataclass
-class TemplateMatchingPredictor(BasePredictor):
+class TemplateMatchingAnalyzer(BaseAnalyzer):
     im_map: dict[str, str] = field(default_factory={})
     """map of image name to path"""
     grayscale: bool = True
@@ -73,7 +73,7 @@ class TemplateMatchingPredictor(BasePredictor):
     def cleanup(self):
         pass
 
-    def predict(self, img, **_):
+    def analyze(self, img, **_):
         if self.grayscale:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             if self.canny:

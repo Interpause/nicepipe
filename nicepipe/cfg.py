@@ -7,7 +7,7 @@ from omegaconf import OmegaConf, SCMode
 
 from .output import outputCfg
 from .input import cv2CapCfg
-from .predict import predictCfg
+from .analyze import analysisCfg
 
 log = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ class miscCfg:
 
 @dataclass
 class nicepipeCfg:
-    predict: predictCfg = field(default_factory=predictCfg)
+    analyze: analysisCfg = field(default_factory=analysisCfg)
     input: cv2CapCfg = field(default_factory=cv2CapCfg)
     output: outputCfg = field(default_factory=outputCfg)
     misc: miscCfg = field(default_factory=miscCfg)

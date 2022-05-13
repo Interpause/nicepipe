@@ -1,4 +1,4 @@
-"""Base/template for predictors."""
+"""Base/template for analyzers."""
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Generic, Protocol, Tuple, TypeVar, Union
@@ -32,30 +32,30 @@ async def passthrough_extra(input, **extra):
     return input, extra
 
 
-async def passthrough(input, **extra):
+async def passthrough(input, **_):
     return input
 
 
-class BasePredictor(ABC):
-    """Abstract class to run models as separate processes."""
+class BaseAnalyzer(ABC):
+    """Abstract class to run analysis in separate process."""
 
     @abstractmethod
     def init(self):
-        """Initializes predictor."""
+        """Initializes analyzer."""
         pass
 
     @abstractmethod
-    def predict(self, img: ndarray, **extra) -> Any:
+    def analyze(self, img: ndarray, **extra) -> Any:
         """Receives img & extra and returns results in a picklable format."""
         pass
 
     @abstractmethod
     def cleanup(self):
-        """Clean up predictor's resources."""
+        """Clean up analyzer's resources."""
         pass
 
     def begin(self, pipe: Connection):
-        """Begins predictor IO as target of Process()."""
+        """Begins analyzer IO as target of Process()."""
         try:
             self.pipe = pipe
             self.init()
@@ -71,7 +71,7 @@ class BasePredictor(ABC):
                 # send & receive concurrently for performance
                 # have measured over 1 min averaging period that async is faster
                 img, extra = await to_thread(self.pipe.recv)
-                results = await to_thread(self.predict, img, **extra)
+                results = await to_thread(self.analyze, img, **extra)
                 # don't await, unlikely to accumulate
                 create_task(to_thread(self.pipe.send, results))
             except Exception as e:
@@ -81,33 +81,29 @@ class BasePredictor(ABC):
 
 
 @dataclass
-class predictionWorkerCfg:
-    """
-    The serializable portions of PredictionWorker that can be configured.\n
-    Necessary to declare this duplicate to ensure serializability and
-    because of quirks with dataclass inheritance.
-    """
+class AnalysisWorkerCfg:
+    """The serializable portions of AnalysisWorker that can be configured."""
 
     # fps related
     max_fps: int = 60
-    """max io rate of Predictor in Hz"""
+    """max io rate of Analyzer in Hz"""
     lock_fps: bool = False
-    """Whether to lock prediction rate to input rate."""
+    """Whether to lock analysis rate to input rate."""
 
 
 @dataclass
-class PredictionWorker(predictionWorkerCfg, WithFPSCallback):
+class AnalysisWorker(AnalysisWorkerCfg, WithFPSCallback):
     """Worker to manage running models in a separate process.
 
     Execution pipeline:
 
-    1. __call__ -> process_input -> Predictor
-    2. Predictor -> predict -> main thread
+    1. __call__ -> process_input -> Analyzer
+    2. Analyzer -> analyze -> main thread
     3. main thread -> process_output -> return
     """
 
-    predictor: BasePredictor = field(default_factory=BasePredictor)
-    """predictor used"""
+    analyzer: BaseAnalyzer = field(default_factory=BaseAnalyzer)
+    """analyzer used"""
 
     # data processing
     process_input: CallableWithExtra[ndarray, Tuple[ndarray, dict]] = field(
@@ -158,27 +154,27 @@ class PredictionWorker(predictionWorkerCfg, WithFPSCallback):
             self.current_output = await self.process_output(output)
             self.fps_callback()
 
-    def predict(self, img: Tuple[ndarray, int], **extra):
-        """returns latest prediction & scheldules img & extra for the next"""
+    def __call__(self, img: Tuple[ndarray, int], **extra):
+        """returns latest prediction/analysis & scheldules img & extra for the next"""
         self.current_input = (img, extra)
         return self.current_output
 
     async def open(self):
         self.pipe, child_pipe = Pipe()
         self.process = Process(
-            target=self.predictor.begin, args=(child_pipe,), daemon=True
+            target=self.analyzer.begin, args=(child_pipe,), daemon=True
         )
         self.process.start()
         self.loop_tasks = (create_task(self._in_loop()), create_task(self._out_loop()))
-        log.debug(f"{type(self.predictor).__name__} worker opened!")
+        log.debug(f"{type(self.analyzer).__name__} worker opened!")
 
     async def close(self):
         self.is_closing = True
-        log.debug(f"{type(self.predictor).__name__} worker closing...")
+        log.debug(f"{type(self.analyzer).__name__} worker closing...")
         await cancel_and_join(*self.loop_tasks)
         self.process.terminate()
         # await to_thread(self.process.join)
-        log.debug(f"{type(self.predictor).__name__} worked closed!")
+        log.debug(f"{type(self.analyzer).__name__} worked closed!")
 
     async def __aenter__(self):
         await self.open()

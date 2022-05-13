@@ -1,7 +1,7 @@
 """
-Backend CV Worker. Worker receives video feed from client then returns predictions. 
+Backend CV Worker. Worker receives video feed from client then returns analysis. 
 Being a remote worker, a client can connect to multiple workers, and workers can 
-send predictions to multiple clients. A single client can act as the master and 
+send analysis to multiple clients. A single client can act as the master and 
 configure the worker's behaviour.
 """
 from multiprocessing import freeze_support
@@ -13,7 +13,7 @@ freeze_support()
 
 from .worker import Worker, create_worker
 
-__version__ = "0.4.2"
+__version__ = "0.5.0"
 __all__ = ["Worker", "create_worker"]
 
 

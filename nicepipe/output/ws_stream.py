@@ -8,7 +8,7 @@ import numpy as np
 
 from ..api.websocket import WebsocketServer, wssCfg
 from ..utils import cancel_and_join, encodeImg, cv2EncCfg, set_interval
-from ..predict import PredictionWorker
+from ..analyze import AnalysisWorker
 from .base import Sink, baseSinkCfg
 
 log = logging.getLogger(__name__)
@@ -24,12 +24,12 @@ class wsStreamCfg(baseSinkCfg):
 class WebsocketStreamer(Sink, wsStreamCfg):
     """Stream output over websocket."""
 
-    formatters: dict[str, PredictionWorker] = field(default_factory=dict)
-    """formatters are needed in order to jsonify predictions from each."""
+    formatters: dict[str, AnalysisWorker] = field(default_factory=dict)
+    """formatters are needed in order to jsonify analysis from each."""
 
     async def _loop(self):
         try:
-            img, preds = self._cur_data
+            img, data = self._cur_data
         except (AttributeError, TypeError):
             return
         try:
@@ -42,17 +42,17 @@ class WebsocketStreamer(Sink, wsStreamCfg):
 
         # We running into the Python object caching issue again!
         out = {}
-        for name, data in preds.items():
-            if data is None:
+        for name, datum in data.items():
+            if datum is None:
                 continue
 
-            out[name] = await self.formatters[name](data, img_encoder=self._encode)
+            out[name] = await self.formatters[name](datum, img_encoder=self._encode)
 
-        await self._wss.broadcast("frame", {"img": img, "preds": out})
+        await self._wss.broadcast("frame", {"img": img, "data": out})
         self.fps_callback()
 
-    def send(self, img: Tuple[np.ndarray, int], preds: dict[str, Any]):
-        self._cur_data = (img, preds)
+    def send(self, img: Tuple[np.ndarray, int], data: dict[str, Any]):
+        self._cur_data = (img, data)
 
     async def open(self, formatters=None, **_):
         self._cur_data = None

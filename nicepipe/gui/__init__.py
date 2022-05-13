@@ -81,13 +81,13 @@ def show_camera():
         async def close(self):
             pass
 
-        def send(self, img, preds):
+        def send(self, img, data):
             img = img[0]
             if imbuffer is None:
                 initialize(img.shape[1], img.shape[0])
 
             imbuffer[...] = img[..., ::-1] / 255
-            mp_results = preds.get("mp_pose", None)
+            mp_results = data.get("mp_pose", None)
             if not mp_results is None:
                 mp_drawing.draw_landmarks(
                     imbuffer,
@@ -95,7 +95,7 @@ def show_camera():
                     mp_pose.POSE_CONNECTIONS,
                     landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style(),
                 )
-            kp_results = preds.get("kp", None)
+            kp_results = data.get("kp", None)
             if not kp_results is None:
                 for (name, rect) in kp_results["dets"]:
                     cv2.polylines(imbuffer, [np.int32(rect)], True, 255, 3, cv2.LINE_AA)

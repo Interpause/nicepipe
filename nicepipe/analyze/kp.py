@@ -5,7 +5,7 @@ from typing import Optional, Tuple
 
 import cv2
 import numpy as np
-from nicepipe.predict.base import BasePredictor, PredictionWorker, predictionWorkerCfg
+from nicepipe.analyze.base import BaseAnalyzer, AnalysisWorker, AnalysisWorkerCfg
 from nicepipe.utils.logging import ORIGINAL_CWD
 
 # derived from https://docs.opencv.org/4.x/dc/dc3/tutorial_py_matcher.html
@@ -60,7 +60,7 @@ class testDetCfg(orbCfg):
 
 
 @dataclass
-class kpDetCfg(predictionWorkerCfg):
+class kpDetCfg(AnalysisWorkerCfg):
     query_detector: queryDetCfg = field(default_factory=queryDetCfg)
     test_detector: testDetCfg = field(default_factory=testDetCfg)
     img_map: dict[str, str] = field(default_factory=dict)
@@ -122,7 +122,7 @@ def filter_matches(pairs, ratio_thres=0.75):
 
 
 @dataclass
-class KPDetPredictor(BasePredictor, kpDetCfg):
+class KPDetector(BaseAnalyzer, kpDetCfg):
     def init(self):
         # ORB was used instead of SIFT or others because I cannot find sufficient info
         # and apparently is the most efficient.
@@ -170,7 +170,7 @@ class KPDetPredictor(BasePredictor, kpDetCfg):
     def cleanup(self):
         pass
 
-    def predict(self, img, **_):
+    def analyze(self, img, **_):
         # TODO: write keypoint tracker
         # https://docs.opencv.org/4.x/d5/dec/classcv_1_1videostab_1_1KeypointBasedMotionEstimator.html
         # will reduce lag if no need to match every frame
@@ -199,9 +199,7 @@ class KPDetPredictor(BasePredictor, kpDetCfg):
                 ((0, 0), (0, qh - 1), (qw - 1, qh - 1), (qw - 1, 0))
             ).reshape(-1, 1, 2)
             rect = cv2.perspectiveTransform(rect, transform)
-            results.append((name, rect))
-        o = {}
-        o["dets"] = results
+            results.append((name, rect.tolist()))
         # debug code will only work if img isnt rescaled
         if self.debug:
             o["debug"] = {
@@ -229,8 +227,8 @@ def create_kp_worker(
         out.pop("debug", None)
         return out
 
-    return PredictionWorker(
-        predictor=KPDetPredictor(**kwargs),
+    return AnalysisWorker(
+        analyzer=KPDetector(**kwargs),
         process_input=process_input,
         format_output=format_output,
         max_fps=max_fps,
@@ -241,14 +239,14 @@ def create_kp_worker(
 if __name__ == "__main__":
     from timeit import Timer
 
-    predictor = KPDetPredictor(img_map={"owl": "test/owl_query.webp"})
-    predictor.init()
+    detector = KPDetector(img_map={"owl": "test/owl_query.webp"})
+    detector.init()
     test_im = cv2.imread("test/owl_place.webp")
 
-    timer = Timer("predictor.predict(test_im)", globals=globals())
+    timer = Timer("detector(test_im)", globals=globals())
     print(f"ms: {timer.timeit(100)/100*1000}")
 
-    results = predictor.predict(test_im)
+    results = detector(test_im)
     for (name, rect) in results["dets"]:
         preview = cv2.polylines(test_im, [np.int32(rect)], True, 255, 3, cv2.LINE_AA)
         # cv2.imshow("kp_test", preview)

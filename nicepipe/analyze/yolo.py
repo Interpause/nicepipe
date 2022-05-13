@@ -6,7 +6,7 @@ from onnxruntime import InferenceSession
 from pathlib import Path
 
 import nicepipe.models
-from nicepipe.predict.base import BasePredictor, PredictionWorker
+from nicepipe.analyze.base import BaseAnalyzer, AnalysisWorker
 
 # ensure images fit input shape and stride requirements
 # btw img size must be multiple of stride in both directions
@@ -178,7 +178,7 @@ def forward(self, im):
 
 
 @dataclass
-class YoloV5Predictor(BasePredictor):
+class YoloV5Predictor(BaseAnalyzer):
     def init(self):
         self.session = InferenceSession(
             str(Path(nicepipe.models.__path__[0]) / "yolov5n6.onnx"),
@@ -192,7 +192,7 @@ class YoloV5Predictor(BasePredictor):
     def cleanup(self):
         pass
 
-    def predict(self, img, **_):
+    def analyze(self, img, **_):
         x = np.stack(
             (letterbox(img, new_shape=self.imghw, stride=self.stride, auto=False)[0],),
             0,
@@ -217,7 +217,7 @@ class YoloV5Predictor(BasePredictor):
 
 
 def create_yolo_worker(cfg=None, **kwargs):
-    return PredictionWorker(
-        predictor=YoloV5Predictor(),
+    return AnalysisWorker(
+        analyzer=YoloV5Predictor(),
         **kwargs,
     )
