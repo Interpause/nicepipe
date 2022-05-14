@@ -3,7 +3,6 @@ import logging
 import cv2
 import dearpygui.dearpygui as dpg
 
-# from dearpygui_ext.logger import mvLogger
 from contextlib import asynccontextmanager, contextmanager
 
 import numpy as np
@@ -19,11 +18,6 @@ log = logging.getLogger(__name__)
 
 # TODO:
 # Graph FPS display
-# Simple logger (dearpygui's too simple, doesnt even support copy & paste)
-# - probably implemented as a logging.Handler
-# Pretty logger
-# - investigate Rich to_svg and to_html methods
-# - else full ANSI code interpreter
 
 
 @contextmanager
@@ -105,8 +99,6 @@ def show_camera():
             dpg.add_item_resize_handler(callback=resize_cam)
         dpg.bind_item_handler_registry("cam_window", "cam_resize_handler")
 
-        dpg.set_value("logs", dpg.get_value("logs") + "\ncam received!")
-
     class GUIStreamer(Sink):
         """dirty hack output sink for the GUI"""
 
@@ -144,27 +136,21 @@ def show_camera():
     return GUIStreamer, window
 
 
-def show_logger():
-    with dpg.value_registry():
-        dpg.add_string_value(default_value="hello", tag="logs")
-
-    with dpg.window(label="Logs"):
-        dpg.add_input_text(multiline=True, readonly=True, source="logs")
+# CellPadding = 0
+# texture input should be transparent bg
 
 
 @asynccontextmanager
 async def setup_gui():
     with create_gui() as render:
         # dpg.show_documentation()
-        # dpg.show_style_editor()
+        dpg.show_style_editor()
         # dpg.show_debug()
         # dpg.show_about()
         # dpg.show_metrics()
         # dpg.show_font_manager()
         # dpg.show_item_registry()
-
-        show_logger()
-        # show_camera()
+        # dpg.configure_app(docking=True, docking_space=True)
 
         task = asyncio.create_task(gui_loop(render))
         try:

@@ -12,6 +12,7 @@ from omegaconf.errors import OmegaConfBaseException
 import dearpygui.dearpygui as dpg
 from rich.prompt import Confirm
 from nicepipe.api import start_api
+from nicepipe.gui.gui_log_handler import create_gui_log_handler
 from nicepipe.input.cv2 import print_cv2_debug
 
 
@@ -28,6 +29,8 @@ from nicepipe.worker import create_worker
 
 
 log = logging.getLogger(__name__)
+
+gui_log_handler = create_gui_log_handler()
 
 rich_live_display = None
 
@@ -61,6 +64,9 @@ async def loop(cfg: nicepipeCfg):
     async with setup_gui():
         gui_sink, cam_window = show_camera()
         dpg.set_primary_window(cam_window, True)
+
+        with dpg.window(label="Logs"):
+            gui_log_handler.show()
 
         async with start_api(log_level=cfg.misc.log_level) as (app, sio):
             worker = create_worker(cfg)
