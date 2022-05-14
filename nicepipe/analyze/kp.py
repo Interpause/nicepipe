@@ -123,6 +123,8 @@ def filter_matches(pairs, ratio_thres=0.75):
 @dataclass
 class KPDetector(BaseAnalyzer, kpDetCfg):
     def init(self):
+        assert self.img_map, "No query images specified!"
+
         # ORB was used instead of SIFT or others because I cannot find sufficient info
         # and apparently is the most efficient.
         # https://docs.opencv.org/4.x/d5/d51/group__features2d__main.html

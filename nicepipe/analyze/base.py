@@ -62,8 +62,18 @@ class BaseAnalyzer(ABC):
             async_run(self._loop())
         except KeyboardInterrupt:
             pass
+        except Exception as e:
+            self.pipe.send((1, e))
         finally:
-            self.cleanup()
+            try:
+                self.cleanup()
+            except Exception as e:
+                # this error wont make it in time when shutting down cleanly
+                # but cleanup should still get a chance to run before
+                # the process is fully terminated
+                self.pipe.send((1, e))
+            finally:
+                self.pipe.close()
 
     async def _loop(self):
         tasks = deque()
@@ -136,29 +146,37 @@ class AnalysisWorker(AnalysisWorkerCfg, WithFPSCallback):
 
     def _in_loop(self):
         """loop for sending inputs to child process"""
-        prev_id = -1
-        for _ in RLLoop(self.max_fps):
-            if self.is_closing:
-                break
-            try:
-                img, extra = self.current_input
-                if self.lock_fps and img[1] == prev_id:
+        try:
+            prev_id = -1
+            for _ in RLLoop(self.max_fps):
+                if self.is_closing:
+                    break
+                try:
+                    img, extra = self.current_input
+                    if self.lock_fps and img[1] == prev_id:
+                        continue
+                    prev_id = img[1]
+                except TypeError:  # current_input is initially None
                     continue
-                prev_id = img[1]
-            except TypeError:  # current_input is initially None
-                continue
-            input = self.process_input(img[0], **extra)
-            self.pipe.send(input)
+                input = self.process_input(img[0], **extra)
+                self.pipe.send(input)
+        except (EOFError, BrokenPipeError):
+            if not self.is_closing:
+                log.warn(f"{type(self.analyzer).__name__} input pipe closed")
 
     def _out_loop(self):
         """loop for receiving outputs from child process"""
-        while not self.is_closing:
-            err, output = self.pipe.recv()
-            if err:
-                log.error(f"{type(self.analyzer).__name__} error", exc_info=output)
-                continue
-            self.current_output = self.process_output(output)
-            self.fps_callback()
+        try:
+            while not self.is_closing:
+                err, output = self.pipe.recv()
+                if err:
+                    log.error(f"{type(self.analyzer).__name__} error", exc_info=output)
+                    continue
+                self.current_output = self.process_output(output)
+                self.fps_callback()
+        except (EOFError, BrokenPipeError):
+            if not self.is_closing:
+                log.warn(f"{type(self.analyzer).__name__} output pipe closed")
 
     def __call__(self, img: Tuple[ndarray, int], **extra):
         """returns latest prediction/analysis & scheldules img & extra for the next"""
