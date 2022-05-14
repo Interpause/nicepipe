@@ -20,7 +20,8 @@ __all__ = [
 
 @dataclass
 class outputCfg:
-    ws_stream: Optional[wsStreamCfg] = field(default_factory=wsStreamCfg)
+    # NOTE: ws_stream deprecated
+    ws_stream: Optional[wsStreamCfg] = None  # field(default_factory=wsStreamCfg)
     sio_stream: Optional[sioStreamCfg] = field(default_factory=sioStreamCfg)
 
 
