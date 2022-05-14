@@ -59,8 +59,18 @@ def draw_point(img, pt, color, size=2):
 def show_camera():
     imbuffer = None
     """HWC, RGB, float32"""
+    with dpg.theme() as theme:
+        with dpg.theme_component(dpg.mvAll):
+            dpg.add_theme_style(
+                dpg.mvStyleVar_WindowPadding, 0, category=dpg.mvThemeCat_Core
+            )
+            dpg.add_theme_style(
+                dpg.mvStyleVar_WindowBorderSize, 0, category=dpg.mvThemeCat_Core
+            )
 
-    window = dpg.add_window(label="Cam")
+    window = dpg.add_window(label="Cam", tag="cam_window", no_scrollbar=True)
+
+    dpg.bind_item_theme(window, theme)
 
     def initialize(width, height):
         nonlocal imbuffer
@@ -74,7 +84,26 @@ def show_camera():
                 format=dpg.mvFormat_Float_rgb,
             )
 
-        dpg.add_image(texture, parent=window)
+        cam = dpg.add_image(texture, parent=window)
+
+        def resize_cam(_, window_tag):
+            window_height = dpg.get_item_height(window_tag)
+            window_width = dpg.get_item_width(window_tag)
+            scale_factor = min(window_height / height, window_width / width)
+            new_height = int(height * scale_factor)
+            new_width = int(width * scale_factor)
+            dpg.set_item_height(cam, new_height)
+            dpg.set_item_width(cam, new_width)
+            dpg.set_item_pos(
+                cam,
+                ((window_width - new_width) // 2, (window_height - new_height) // 2),
+            )
+
+        resize_cam(window, window)
+
+        with dpg.item_handler_registry(tag="cam_resize_handler"):
+            dpg.add_item_resize_handler(callback=resize_cam)
+        dpg.bind_item_handler_registry("cam_window", "cam_resize_handler")
 
         dpg.set_value("logs", dpg.get_value("logs") + "\ncam received!")
 
@@ -128,7 +157,7 @@ async def setup_gui():
     with create_gui() as render:
         # dpg.show_documentation()
         # dpg.show_style_editor()
-        dpg.show_debug()
+        # dpg.show_debug()
         # dpg.show_about()
         # dpg.show_metrics()
         # dpg.show_font_manager()
