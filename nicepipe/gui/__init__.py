@@ -13,7 +13,7 @@ import mediapipe.python.solutions.drawing_styles as mp_drawing_styles
 import mediapipe.python.solutions.pose as mp_pose
 
 from ..output import Sink
-from ..utils import add_fps_counter, cancel_and_join, rlloop
+from ..utils import add_fps_counter, cancel_and_join, RLLoop
 
 log = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ def create_gui():
 
 async def gui_loop(render):
     gui_loop = add_fps_counter("main: GUI")
-    async for _ in rlloop(60, update_func=gui_loop):
+    async for _ in RLLoop(60, update_func=gui_loop):
         render()
         if not dpg.is_dearpygui_running():
             # for some reason, breaking here destroys some child process sufficiently

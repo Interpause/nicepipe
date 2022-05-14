@@ -5,14 +5,13 @@ from collections import deque
 from typing import Any, Generic, Protocol, Tuple, TypeVar, Union
 from dataclasses import dataclass, field
 import logging
-import traceback
 
 from numpy import ndarray
 from asyncio import Task, run as async_run, create_task, to_thread
 from multiprocessing import Pipe, Process
 from multiprocessing.connection import Connection
 
-from ..utils import cancel_and_join, rlloop, WithFPSCallback, trim_task_queue
+from ..utils import cancel_and_join, RLLoop, WithFPSCallback, trim_task_queue
 import nicepipe.utils.uvloop  # use uvloop for child process asyncio loop
 
 log = logging.getLogger(__name__)
@@ -68,6 +67,8 @@ class BaseAnalyzer(ABC):
 
     async def _loop(self):
         tasks = deque()
+        # output only when there is input, and be ready for new input asap
+        # making it have an input & output loop is hence senseless
         while True:
             img, extra = await to_thread(self.pipe.recv)
             try:
@@ -136,7 +137,7 @@ class AnalysisWorker(AnalysisWorkerCfg, WithFPSCallback):
     async def _in_loop(self):
         """loop for sending inputs to child process"""
         prev_id = -1
-        async for _ in rlloop(self.max_fps):
+        async for _ in RLLoop(self.max_fps):
             if self.is_closing:
                 break
             try:
@@ -167,7 +168,10 @@ class AnalysisWorker(AnalysisWorkerCfg, WithFPSCallback):
     async def open(self):
         self.pipe, child_pipe = Pipe()
         self.process = Process(
-            target=self.analyzer.begin, args=(child_pipe,), daemon=True
+            target=self.analyzer.begin,
+            args=(child_pipe,),
+            daemon=True,
+            name=type(self.analyzer).__name__,
         )
         self.process.start()
         self.loop_tasks = (create_task(self._in_loop()), create_task(self._out_loop()))

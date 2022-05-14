@@ -13,7 +13,7 @@ from cv2 import imencode
 from .logging import add_fps_counter, update_status, enable_fancy_console, change_cwd
 
 __all__ = [
-    "rlloop",
+    "RLLoop",
     "encodeJPG",
     "encodeImg",
     "trim_task_queue",
@@ -27,31 +27,59 @@ __all__ = [
 ]
 
 
-async def rlloop(rate, iterator=None, update_func=lambda: 0):
+class RLLoop:
     """rate-limited loop in Hz. Loop is infinite if iterator is None."""
 
-    is_async = isinstance(iterator, AsyncIterable)
-    if is_async:
-        iterator = iterator.__aiter__()
-    else:
-        # set iterator to be infinite if None
-        iterator = iter(int, 1) if iterator is None else iterator.__iter__()
+    def __init__(self, rate, iterator=None, update_func=lambda: 0):
+        self.is_async = isinstance(iterator, AsyncIterable)
+        self._next = (
+            iterator.__aiter__().__anext__
+            if self.is_async
+            else iter(int, 1).__next__  # infinite iterator if None
+            if iterator is None
+            else iterator.__iter__().__next__
+        )
+        self.period = 1.0 / rate
+        self._update = update_func
 
-    p = 1.0 / rate
-    t = 0
-    while True:
-        t = time.perf_counter()
+    def __iter__(self):
+        if self.is_async:
+            raise RuntimeError(
+                "Generally a design flaw to run async iterator as synchronous."
+            )
+        t = 0
         try:
-            i = (await iterator.__anext__()) if is_async else iterator.__next__()
-        except (StopIteration, StopAsyncIteration):
-            break
+            # dont ask me why yield has to be after measurement
+            while True:
+                t = time.perf_counter()
+                i = self._next()
+                self._update()
+                time.sleep(max(0, self.period - time.perf_counter() + t))
+                yield i
+        except StopIteration:
+            pass
 
-        update_func()
-        await asyncio.sleep(max(0, p - time.perf_counter() + t))
-        # yield comes after the time measurement
-        # might be how async loops work, but i found that including yield
-        # into the time measurement roughly doubles FPS
-        yield i
+    async def __aiter__(self):
+        if not self.is_async:
+
+            async def wrap(f=self._next):
+                try:
+                    return f()  # to_thread might be useful if iterator is heavy
+                except StopIteration:
+                    raise StopAsyncIteration
+
+            self._next = wrap
+
+        t = 0
+        try:
+            while True:
+                t = time.perf_counter()
+                i = await self._next()
+                self._update()
+                await asyncio.sleep(max(0, self.period - time.perf_counter() + t))
+                yield i
+        except StopAsyncIteration:
+            pass
 
 
 @dataclass
@@ -105,7 +133,7 @@ def set_interval(afunc, fps, maxlen=10, args=[], kwargs={}):
     async def loop():
         tasks = deque()
         try:
-            async for _ in rlloop(fps):
+            async for _ in RLLoop(fps):
                 tasks.append(asyncio.create_task(afunc(*args, **kwargs)))
                 await trim_task_queue(tasks, maxlen)
         except CancelledError:

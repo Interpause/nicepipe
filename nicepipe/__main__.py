@@ -20,7 +20,7 @@ from nicepipe.cfg import get_config, nicepipeCfg
 from nicepipe.utils import (
     cancel_and_join,
     enable_fancy_console,
-    rlloop,
+    RLLoop,
     change_cwd,
 )
 from nicepipe.gui import setup_gui, show_camera
@@ -71,7 +71,7 @@ async def loop(cfg: nicepipeCfg):
                 if cfg.misc.console_live_display:
                     resume_task = asyncio.create_task(resume_live_display())
 
-                async for _ in rlloop(5):
+                async for _ in RLLoop(5):
                     if not dpg.is_dearpygui_running():
                         break
 
