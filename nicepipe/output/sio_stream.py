@@ -13,6 +13,7 @@ from aiortc import (
     RTCConfiguration,
     VideoStreamTrack,
 )
+import aiortc.codecs
 from av import VideoFrame
 
 from ..utils import (
@@ -32,6 +33,21 @@ log = logging.getLogger(__name__)
 # send to non-responsive clients.
 # Also socket.io-msgpack-parser isn't supported either yet.
 # Thats both easy performance gains off the table.
+
+# NOTE: use chrome://webrtc-internals/. its very useful
+
+# NOTE:
+# setting the default will slightly force it to try a higher bitrate
+# but if its too high, video jitters a lot & quality suffers anyways
+# best is to set MAX_BITRATE, in which both browser & aiortc try & hit the highest
+# bitrate they can (Ive tested it will do this).
+# that said, the bottleneck is likely pyAV's encoder.
+# pyAV has to be built from source with ffmpeg 4.0 to enable nvenc encoders,
+# then aiortc has to be modified or monkey-patched to use said encoders.
+# Good luck with: https://pyav.org/docs/develop/overview/installation.html#build-on-windows
+
+# aiortc.codecs.h264.DEFAULT_BITRATE = aiortc.codecs.vpx.DEFAULT_BITRATE = int(6e6)
+aiortc.codecs.h264.MAX_BITRATE = aiortc.codecs.vpx.MAX_BITRATE = int(50e6)
 
 
 class LiveStreamTrack(VideoStreamTrack):
