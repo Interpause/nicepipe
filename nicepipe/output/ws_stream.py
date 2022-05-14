@@ -46,7 +46,7 @@ class WebsocketStreamer(Sink, wsStreamCfg):
             if datum is None:
                 continue
 
-            out[name] = await self.formatters[name](datum, img_encoder=self._encode)
+            out[name] = self.formatters[name](datum, img_encoder=self._encode)
 
         await self._wss.broadcast("frame", {"img": img, "data": out})
         self.fps_callback()

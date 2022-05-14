@@ -24,15 +24,15 @@ JSONPrimitives = Union[int, str, dict, list, tuple]
 class CallableWithExtra(Generic[IT, OT], Protocol):
     """placeholder async function & type for functions that take kwargs"""
 
-    async def __call__(self, input: IT, **extra) -> OT:
+    def __call__(self, input: IT, **extra) -> OT:
         return input, extra
 
 
-async def passthrough_extra(input, **extra):
+def passthrough_extra(input, **extra):
     return input, extra
 
 
-async def passthrough(input, **_):
+def passthrough(input, **_):
     return input
 
 
@@ -134,10 +134,10 @@ class AnalysisWorker(AnalysisWorkerCfg, WithFPSCallback):
     pipe: Connection = None
     """Connection used to communicate with child process."""
 
-    async def _in_loop(self):
+    def _in_loop(self):
         """loop for sending inputs to child process"""
         prev_id = -1
-        async for _ in RLLoop(self.max_fps):
+        for _ in RLLoop(self.max_fps):
             if self.is_closing:
                 break
             try:
@@ -147,17 +147,17 @@ class AnalysisWorker(AnalysisWorkerCfg, WithFPSCallback):
                 prev_id = img[1]
             except TypeError:  # current_input is initially None
                 continue
-            input = await self.process_input(img[0], **extra)
-            await to_thread(self.pipe.send, input)
+            input = self.process_input(img[0], **extra)
+            self.pipe.send(input)
 
-    async def _out_loop(self):
+    def _out_loop(self):
         """loop for receiving outputs from child process"""
         while not self.is_closing:
-            err, output = await to_thread(self.pipe.recv)
+            err, output = self.pipe.recv()
             if err:
                 log.error(f"{type(self.analyzer).__name__} error", exc_info=output)
                 continue
-            self.current_output = await self.process_output(output)
+            self.current_output = self.process_output(output)
             self.fps_callback()
 
     def __call__(self, img: Tuple[ndarray, int], **extra):
@@ -174,7 +174,10 @@ class AnalysisWorker(AnalysisWorkerCfg, WithFPSCallback):
             name=type(self.analyzer).__name__,
         )
         self.process.start()
-        self.loop_tasks = (create_task(self._in_loop()), create_task(self._out_loop()))
+        self.loop_tasks = (
+            create_task(to_thread(self._in_loop)),
+            create_task(to_thread(self._out_loop)),
+        )
         log.debug(f"{type(self.analyzer).__name__} worker opened!")
 
     async def close(self):

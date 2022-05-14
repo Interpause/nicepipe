@@ -3,6 +3,7 @@ from typing import Any, Literal, Tuple
 from dataclasses import dataclass
 from asyncio import create_task, to_thread, sleep
 import logging
+import time
 
 import cv2
 import numpy as np
@@ -49,9 +50,9 @@ class cv2CapSource(cv2CapCfg, Source):
         self._nframe = 0
         self._cap = cv2.VideoCapture()
 
-    async def _loop(self):
+    def _loop(self):
         while self.is_open:
-            success = await to_thread(self._cap.read, self.frame)
+            success = self._cap.read(self.frame)
             if not success:
                 log.debug("Ignoring empty camera frame.")
                 continue
@@ -63,7 +64,11 @@ class cv2CapSource(cv2CapCfg, Source):
             raise StopAsyncIteration
         try:
             while self.is_open and self._prev_frame == self._nframe:
-                await sleep(0)
+                # NOTE:
+                # making a __next__ version that uses time.sleep actually performs worse
+                # this is because of thread-switching being less efficient than tasks
+                # when doing sleep(0)
+                await sleep(0)  # how bad is this?
         except AttributeError:
             pass
         finally:
@@ -82,7 +87,7 @@ class cv2CapSource(cv2CapCfg, Source):
         self._nframe = 0
         self.frame = np.empty(self.shape, dtype=np.uint8)
         await to_thread(self._init_cv2_cap)
-        self._task = create_task(self._loop())
+        self._task = create_task(to_thread(self._loop))
         log.debug(
             "%s opened! source: %s, api: %s, size_wh: (%d, %d), fps: %.1f",
             type(self).__name__,

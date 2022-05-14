@@ -45,14 +45,6 @@ TODO: Insert planned architecture documentation.
 
 ## TODO
 
-- `to_thread()` has cost. better to use for one large sync jobs than for many tiny parts in a large async job.
-  - basically evaluate when async functions make sense vs sync functions, then wrap the main sync loops in jobs
-  - might have to reevaluate base analysisworker structure
-    - for example, allow sync io processor functions since they will be wrapped by to_thread
-  - need sync version of RLLoop for sync loops
-  - might ease transition if we ever choose to use non-GIL python
-    - but then we might have to worry about locks...
-    - the performance tho...
 - When Python 3.10 becomes widely supported, use `__slots__` on all dataclasses and even some classes for free performance
 
 ## Tests Possible

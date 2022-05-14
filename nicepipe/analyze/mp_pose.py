@@ -2,7 +2,6 @@ from __future__ import annotations
 from typing import Optional, Tuple
 from types import SimpleNamespace
 from dataclasses import dataclass, field
-import asyncio
 
 import cv2
 from mediapipe.python.solutions.pose import Pose as MpPose
@@ -47,15 +46,13 @@ def serialize_mp_results(results: SimpleNamespace):
     return obj
 
 
-async def deserialize_mp_results(results: dict, **_):
+def deserialize_mp_results(results: dict, **_):
     obj = {}
     if "pose_landmarks" in results:
         # create protobuf message
         pose_landmarks = landmark_pb2.NormalizedLandmarkList()
         # load contents into message...
-        await asyncio.to_thread(
-            pose_landmarks.ParseFromString, results["pose_landmarks"]
-        )
+        pose_landmarks.ParseFromString(results["pose_landmarks"])
         # yeah google why is Protobuf so user-unfriendly
         obj["pose_landmarks"] = pose_landmarks
     if "segmentation_mask" in results:
@@ -67,16 +64,14 @@ async def deserialize_mp_results(results: dict, **_):
         return SimpleNamespace(**obj)
 
 
-async def prep_send_mp_results(results: SimpleNamespace, img_encoder=encodeJPG, **_):
+def prep_send_mp_results(results: SimpleNamespace, img_encoder=encodeJPG, **_):
     """prepare mp results for sending over network"""
     mask = None
     pose = None
     if not results is None:
-        pose = (await asyncio.to_thread(pb_json.MessageToDict, results.pose_landmarks))[
-            "landmark"
-        ]
+        pose = pb_json.MessageToDict(results.pose_landmarks)["landmark"]
         if hasattr(results, "segmentation_mask"):
-            mask = await asyncio.to_thread(img_encoder, results.segmentation_mask)
+            mask = img_encoder(results.segmentation_mask)
     return {"mask": mask, "pose": pose}
 
 
@@ -99,10 +94,10 @@ class MPPosePredictor(BaseAnalyzer):
 
 
 def create_mp_pose_worker(cfg=mpPoseCfg(), scale_wh=mpPoseWorkerCfg.scale_wh, **kwargs):
-    async def process_input(img, **extra):
+    def process_input(img, **extra):
         if scale_wh is None:
             return img, extra
-        return await asyncio.to_thread(cv2.resize, img, scale_wh), extra
+        return cv2.resize(img, scale_wh), extra
 
     return AnalysisWorker(
         analyzer=MPPosePredictor(cfg),

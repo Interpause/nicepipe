@@ -132,6 +132,18 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
         log.warning(sid)
         return "bong"
 
+    def _prepare_output(self, img, data):
+        img = self._encode(img[0])
+
+        # We running into the Python object caching issue again!
+        out = {}
+        for name, datum in data.items():
+            if datum is None:
+                continue
+            out[name] = self.formatters[name](datum, img_encoder=self._encode)
+
+        return img, out
+
     async def _loop(self):
         try:
             img, data = self._cur_data
@@ -146,16 +158,7 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
         self.livestream_track.width = img[0].shape[1]
         self.livestream_track.height = img[0].shape[0]
         self.livestream_track.send_frame(img[0])
-        img = await asyncio.to_thread(self._encode, img[0])
-
-        # We running into the Python object caching issue again!
-        out = {}
-        for name, datum in data.items():
-            if datum is None:
-                continue
-
-            out[name] = await self.formatters[name](datum, img_encoder=self._encode)
-
+        img, out = await asyncio.to_thread(self._prepare_output, img, data)
         await self.emit("frame", {"img": img, "data": out}, room=self.room_name)
         self.fps_callback()
 

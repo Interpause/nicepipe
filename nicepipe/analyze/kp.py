@@ -1,5 +1,4 @@
 from __future__ import annotations
-import asyncio
 from dataclasses import asdict, dataclass, field
 from typing import Optional, Tuple
 
@@ -218,12 +217,12 @@ def create_kp_worker(
     if not kwargs:  # empty dicts are false. Okay python.
         kwargs = kpDetCfg()
 
-    async def process_input(img, **extra):
+    def process_input(img, **extra):
         if scale_wh is None:
             return img, extra
-        return await asyncio.to_thread(cv2.resize, img, scale_wh), extra
+        return cv2.resize(img, scale_wh), extra
 
-    async def format_output(out, **_):
+    def format_output(out, **_):
         out.pop("debug", None)
         return out
 
