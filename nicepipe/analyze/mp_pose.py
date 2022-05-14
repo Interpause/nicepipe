@@ -22,11 +22,11 @@ class mpPoseCfg:
 
     static_image_mode: bool = False
     model_complexity: int = 1
-    smooth_landmarks: bool = True
+    smooth_landmarks: bool = False
     enable_segmentation: bool = False
-    smooth_segmentation: bool = True
-    min_detection_confidence: float = 0.5
-    min_tracking_confidence: float = 0.7
+    smooth_segmentation: bool = False
+    min_detection_confidence: float = 0.7
+    min_tracking_confidence: float = 0.3
 
 
 @dataclass
