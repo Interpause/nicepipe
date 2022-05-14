@@ -6,8 +6,6 @@ configure the worker's behaviour.
 """
 from multiprocessing import freeze_support
 
-# TODO: when python 3.10 is better supported, enable slots on dataclasses for performance
-
 # needed on windows for multiprocessing
 freeze_support()
 

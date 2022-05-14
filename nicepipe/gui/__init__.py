@@ -17,6 +17,14 @@ from ..utils import add_fps_counter, cancel_and_join, RLLoop
 
 log = logging.getLogger(__name__)
 
+# TODO:
+# Graph FPS display
+# Simple logger (dearpygui's too simple, doesnt even support copy & paste)
+# - probably implemented as a logging.Handler
+# Pretty logger
+# - investigate Rich to_svg and to_html methods
+# - else full ANSI code interpreter
+
 
 @contextmanager
 def create_gui():
@@ -36,9 +44,7 @@ async def gui_loop(render):
     async for _ in RLLoop(60, update_func=gui_loop):
         render()
         if not dpg.is_dearpygui_running():
-            # for some reason, breaking here destroys some child process sufficiently
-            # to crash the main process. It probably is dpg's process, not mine.
-            continue
+            break
 
 
 def draw_point(img, pt, color, size=2):
@@ -115,12 +121,6 @@ def show_logger():
 
     with dpg.window(label="Logs"):
         dpg.add_input_text(multiline=True, readonly=True, source="logs")
-
-    # TODO: investigate Rich to_svg and to_html methods for a potentially easy way for making the log panel instead of going full-on terminal emulator
-
-    # TODO: dearpygui's logger is too simplistic. also doesnt support copy and paste. might as well write my own.
-    # probably will have to write it as a Handler that creates a window or smth
-    # logger = mvLogger(parent=dpg.window(label="Logs"))
 
 
 @asynccontextmanager

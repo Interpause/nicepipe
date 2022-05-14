@@ -1,2 +1,2 @@
-# TODO: use pyAV or opencv to output to file or smth
+# TODO: use pyAV to output to file or smth
 raise NotImplementedError

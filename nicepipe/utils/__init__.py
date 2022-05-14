@@ -145,14 +145,14 @@ def set_interval(afunc, fps, maxlen=10, args=[], kwargs={}):
 
 
 # opencv options available for encoding
-# https://docs.opencv.org/3.4/d8/d6a/group__imgcodecs__flags.html#ga292d81be8d76901bff7988d18d2b42ac
+# https://docs.opencv.org/4.x/d8/d6a/group__imgcodecs__flags.html#ga292d81be8d76901bff7988d18d2b42ac
 # NOTE:
 # - opencv's webp compressor is slower than jpeg no matter the options used
 # - base64 is 2x smaller than percent-encoded bytes
 # - sending video chunks will always be more efficient cause videos only deal with differences between frames
 @dataclass
 class cv2EncCfg:
-    """https://docs.opencv.org/4.5.5/d4/da8/group__imgcodecs.html"""
+    """https://docs.opencv.org/4.x/d4/da8/group__imgcodecs.html"""
 
     format: str = "jpeg"
     """cv2 encode format"""

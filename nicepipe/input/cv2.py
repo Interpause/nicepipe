@@ -3,7 +3,6 @@ from typing import Any, Literal, Tuple
 from dataclasses import dataclass
 from asyncio import create_task, to_thread, sleep
 import logging
-import time
 
 import cv2
 import numpy as np
@@ -16,7 +15,7 @@ log = logging.getLogger(__name__)
 
 @dataclass
 class cv2CapCfg:
-    """https://docs.opencv.org/4.5.5/d8/dfe/classcv_1_1VideoCapture.html"""
+    """https://docs.opencv.org/4.x/d8/dfe/classcv_1_1VideoCapture.html"""
 
     # https://github.com/omry/omegaconf/pull/381
     # source: Union[str, int] = 0
@@ -110,7 +109,7 @@ class cv2CapSource(cv2CapCfg, Source):
 
 def print_cv2_debug():
     log.debug(
-        "See https://docs.opencv.org/3.4/dc/d3d/videoio_8hpp.html for more details."
+        "See https://docs.opencv.org/4.x/dc/d3d/videoio_8hpp.html for more details."
     )
     log.debug(f"Camera Backends: {cv2.videoio_registry.getCameraBackends()}")
     log.debug(f"File Backends: {cv2.videoio_registry.getStreamBackends()}")

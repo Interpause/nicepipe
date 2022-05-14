@@ -98,5 +98,4 @@ class TemplateMatchingAnalyzer(BaseAnalyzer):
 # possibly threshold at every scale or smth... need some live calibration shit tho
 
 if __name__ == "__main__":
-    # TODO: test this
     pass

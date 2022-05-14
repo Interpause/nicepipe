@@ -38,7 +38,6 @@ class WebsocketServer(wssCfg):
             async for msg in ws:
                 try:
                     # obj = json.loads(msg)
-                    # TODO: interface for remote worker configure & control
                     # self.handler()
                     pass
                 except:

@@ -10,7 +10,7 @@ from nicepipe.utils.logging import ORIGINAL_CWD
 
 # derived from https://docs.opencv.org/4.x/dc/dc3/tutorial_py_matcher.html
 
-# TODO: multiple objects... how?
+# Multiple objects, how?
 # Method 1: Cluster keypoints using meanshift, then match each cluster (method found online)
 # Method 2: Mask each successful detection using gray, then rerun
 # Which is more efficient? (probably method 1...) Which is faster...? (probably method 1 as long as code is written well)
@@ -116,7 +116,7 @@ def filter_matches(pairs, ratio_thres=0.75):
     ]
 
 
-# https://docs.opencv.org/3.4/de/db2/classcv_1_1KeyPointsFilter.html
+# https://docs.opencv.org/4.x/de/db2/classcv_1_1KeyPointsFilter.html
 # might be alternative method for masking (masking keypoints vs image)
 
 
@@ -125,11 +125,9 @@ class KPDetector(BaseAnalyzer, kpDetCfg):
     def init(self):
         assert self.img_map, "No query images specified!"
 
-        # ORB was used instead of SIFT or others because I cannot find sufficient info
-        # and apparently is the most efficient.
+        # All detectors & descriptors available in OpenCV:
         # https://docs.opencv.org/4.x/d5/d51/group__features2d__main.html
         # https://docs.opencv.org/4.x/d3/df6/namespacecv_1_1xfeatures2d.html
-        # TODO: consider/try more detectors
         # remember to switch BFMatcher & Flannmatcher code for vector vs binary string based
         self.detector = cv2.ORB_create(**self.test_detector)
         query_detector = cv2.ORB_create(**self.query_detector)

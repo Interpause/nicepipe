@@ -16,7 +16,7 @@ class baseSinkCfg:
     """Whether to lock output rate to input rate."""
 
 
-# TODO: A variant of Sink should be made for networked, async buffered streams like sio, ws and webrtc
+# TODO: A subclass of Sink should be made for networked, async buffered streams like sio, ws and webrtc
 
 
 @dataclass

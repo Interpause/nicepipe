@@ -113,7 +113,7 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
         return 200, server_sdp
 
     async def on_new_ice_candidate(self, sid, candidate):
-        # Each ICE candidate is a proposed connection: TCP or UDP, IP address & port, TURN or direct, which exact codec & params
+        # Each ICE candidate is a proposed connection: TCP or UDP, IP address & port, TURN or direct
         # Throughout the lifespan of a connection, candidates are exchanged to find the optimal connection
 
         # ICE candidates can be included in the SDP
