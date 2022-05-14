@@ -5,6 +5,7 @@ from typing import Optional, Tuple
 import cv2
 import numpy as np
 from nicepipe.analyze.base import BaseAnalyzer, AnalysisWorker, AnalysisWorkerCfg
+from nicepipe.analyze.utils import letterbox
 from nicepipe.utils.logging import ORIGINAL_CWD
 
 # derived from https://docs.opencv.org/4.x/dc/dc3/tutorial_py_matcher.html
@@ -49,13 +50,13 @@ class orbCfg:
 @dataclass
 class queryDetCfg(orbCfg):
     # dont need as many features for query images
-    nfeatures: int = 1000
+    nfeatures: int = 2000
 
 
 @dataclass
 class testDetCfg(orbCfg):
     # test images will naturally have more potential features
-    nfeatures: int = 10000
+    nfeatures: int = 100000
 
 
 @dataclass
@@ -68,15 +69,15 @@ class kpDetCfg(AnalysisWorkerCfg):
     """min keypoint matches to consider a detection"""
     use_flann: bool = False
     """use flann-based matcher, its supposed to be faster than brute force at large number of features but... experimentally its slower despite turning up nfeatures"""
-    scale_wh: Optional[Tuple[int, int]] = None
-    """downscaling usually wont make sense"""
-    ratio_thres: float = 0.7
+    scale_wh: Optional[Tuple[int, int]] = (480, 480)
+    """scale props to this resolution"""
+    ratio_thres: float = 0.6
     """threshold for keypoint to be considered a match"""
     debug: bool = False
     """whether to pass data needed for debug"""
 
 
-def calc_features(detector, img, keypoints=None):
+def calc_features(img, detector, descriptor=None, keypoints=None):
     """Calculate (keypoints, descriptors, height, width) given an image.
 
     Args:
@@ -85,10 +86,9 @@ def calc_features(detector, img, keypoints=None):
         keypoints (_type_, optional): Manually specified keypoints to use. Defaults to None.
     """
     assert len(img.shape) == 2, "Image must be grayscale!"
+    kps = keypoints if keypoints else detector.detect(img, None)
     kps, desc = (
-        detector.compute(img, keypoints)
-        if keypoints
-        else detector.detectAndCompute(img, None)
+        descriptor.compute(img, kps) if descriptor else detector.compute(img, kps)
     )
     return kps, desc, img.shape[0], img.shape[1]
 
@@ -125,10 +125,13 @@ class KPDetector(BaseAnalyzer, kpDetCfg):
     def init(self):
         # ORB was used instead of SIFT or others because I cannot find sufficient info
         # and apparently is the most efficient.
-        # https://docs.opencv.org/3.4/d5/d51/group__features2d__main.html
+        # https://docs.opencv.org/4.x/d5/d51/group__features2d__main.html
+        # https://docs.opencv.org/4.x/d3/df6/namespacecv_1_1xfeatures2d.html
         # TODO: consider/try more detectors
         # remember to switch BFMatcher & Flannmatcher code for vector vs binary string based
-        self.detector = cv2.ORB_create(**asdict(orbCfg()))
+        self.detector = cv2.ORB_create(**self.test_detector)
+        query_detector = cv2.ORB_create(**self.query_detector)
+        self.descriptor = cv2.xfeatures2d.BEBLID_create(1.0)
 
         # NOTE: no documentation exists that i cannot figure out what
         # parameters exist or do... values here are hardcoded from tutorial
@@ -143,7 +146,7 @@ class KPDetector(BaseAnalyzer, kpDetCfg):
             # FLANN_INDEX_KDTREE = 1
             # index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
 
-            # ORB, BRISK, etc
+            # binary descriptors such as ORB, BRISK, BEBLID etc
             FLANN_INDEX_LSH = 6
             index_params = dict(
                 algorithm=FLANN_INDEX_LSH,
@@ -164,7 +167,9 @@ class KPDetector(BaseAnalyzer, kpDetCfg):
             path = str(ORIGINAL_CWD / path)
             im = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
             assert not im is None, f"Failed to read image {name} from {path}"
-            self.features[name] = calc_features(self.detector, im)
+            if self.scale_wh:
+                im = letterbox(im, self.scale_wh, color=(0, 0, 0))[0]
+            self.features[name] = calc_features(im, query_detector, self.descriptor)
 
     def cleanup(self):
         pass
@@ -175,7 +180,7 @@ class KPDetector(BaseAnalyzer, kpDetCfg):
         # will reduce lag if no need to match every frame
         # worst case... one process per query image?
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        t_kp, t_desc, _, _ = calc_features(self.detector, img)
+        t_kp, t_desc, _, _ = calc_features(img, self.detector, self.descriptor)
 
         o = {}
         results = []
@@ -209,7 +214,6 @@ class KPDetector(BaseAnalyzer, kpDetCfg):
 
 
 def create_kp_worker(
-    scale_wh=kpDetCfg.scale_wh,
     max_fps=kpDetCfg.max_fps,
     lock_fps=kpDetCfg.lock_fps,
     **kwargs,
@@ -217,18 +221,12 @@ def create_kp_worker(
     if not kwargs:  # empty dicts are false. Okay python.
         kwargs = kpDetCfg()
 
-    def process_input(img, **extra):
-        if scale_wh is None:
-            return img, extra
-        return cv2.resize(img, scale_wh), extra
-
     def format_output(out, **_):
         out.pop("debug", None)
         return out
 
     return AnalysisWorker(
         analyzer=KPDetector(**kwargs),
-        process_input=process_input,
         format_output=format_output,
         max_fps=max_fps,
         lock_fps=lock_fps,

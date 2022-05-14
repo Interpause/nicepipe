@@ -101,8 +101,8 @@ def show_camera():
                     cv2.polylines(imbuffer, [np.int32(rect)], True, 255, 3, cv2.LINE_AA)
                 if "debug" in kp_results:
                     debug_kp = kp_results["debug"]
-                    for pt in debug_kp["all_kp"]:
-                        draw_point(imbuffer, pt, (255, 0, 0))
+                    # for pt in debug_kp["all_kp"]:
+                    #     draw_point(imbuffer, pt, (255, 0, 0))
                     for pt in debug_kp["matched_kp"]:
                         draw_point(imbuffer, pt, (0, 255, 0))
 
