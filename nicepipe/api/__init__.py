@@ -61,4 +61,5 @@ async def start_api(log_level=logging.INFO):
     try:
         yield app, sio
     finally:
+        await server.shutdown()
         await cancel_and_join(task)

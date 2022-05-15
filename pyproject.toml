@@ -20,6 +20,8 @@ pyinstaller nicepipe\\__main__.py \
 --noconfirm \
 --onefile \
 --collect-data mediapipe \
+--collect-all blacksheep \
+--hidden-import cchardet \
 --exclude-module uvloop \
 --exclude-module tensorflow \
 --exclude-module nicepipe.analyze.yolo \
@@ -32,6 +34,8 @@ pyinstaller app.py \
 --noconfirm \
 --onefile \
 --collect-data mediapipe \
+--collect-all blacksheep \
+--hidden-import cchardet \
 --exclude-module uvloop \
 --paths cudnn\\bin \
 --paths cudnn\\dll_x64 \
