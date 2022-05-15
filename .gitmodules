@@ -1,0 +1,3 @@
+[submodule "submodules/deep_sort_realtime"]
+	path = submodules/deep_sort_realtime
+	url = https://github.com/Interpause/deep_sort_realtime
