@@ -3,6 +3,8 @@ import asyncio
 import logging
 from typing import Any, Tuple
 from dataclasses import dataclass, field
+import msgpack
+import time
 
 import numpy as np
 from socketio import AsyncNamespace
@@ -12,6 +14,7 @@ from aiortc import (
     RTCIceCandidate,
     RTCConfiguration,
     VideoStreamTrack,
+    RTCDataChannel,
 )
 import aiortc.codecs
 from av import VideoFrame
@@ -33,6 +36,17 @@ log = logging.getLogger(__name__)
 # send to non-responsive clients.
 # Also socket.io-msgpack-parser isn't supported either yet.
 # Thats both easy performance gains off the table.
+
+# NOTE: LAG ISSUE: Socket.io is less efficient than pure websockets. Furthermore,
+# given the lack of volatile packets, or a way to monkey-patch it in, we have a bad
+# situation. The FPS of the main thread (GUI and this) tanks when socket.io is
+# saturated. Heck it tanks when the client is unresponsive (during a refresh). This
+# might mean we either have to switch back to websocket for streaming or go all the way
+# to webRTC.
+
+# NOTE: Obvious in retrospect, theres supposed to be one VideoStreamTrack per connection,
+# since the track is supposed to adjust dynamically to connection...
+# well lag for anything more than 1 client I guess.
 
 # NOTE: use chrome://webrtc-internals/. its very useful
 
@@ -82,7 +96,6 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
 
     formatters: dict[str, AnalysisWorker] = field(default_factory=dict)
     """formatters are needed in order to jsonify analysis from each."""
-    livestream_track: LiveStreamTrack = field(default_factory=LiveStreamTrack)
 
     def on_connect(self, sid, environ, auth):
         # TODO: authenticate client; check if sufficient rights to VIEW
@@ -90,11 +103,19 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
 
     async def on_disconnect(self, sid):
         conn = self._rtc_conns.pop(sid, None)
-        self.on_unsub_stream(sid)
+        chn = self._data_chns.pop(sid, None)
+        track = self._live_tracks.pop(sid, None)
+        # self.on_unsub_stream(sid)
+        if track:
+            track.stop()
+        if chn:
+            chn.close()
         if conn:
             await conn.close()
 
     def on_sub_stream(self, sid):
+        # we no longer support this due to socket.io saturation issue
+        return 503
         if self.is_open:
             self.enter_room(sid, self.room_name)
             return 200  # OK
@@ -104,19 +125,36 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
         self.leave_room(sid, self.room_name)
         return 200
 
+    def on_negotiate_channel(self, sid, channel_id):
+        chn = self._rtc_conns[sid].createDataChannel(
+            "analysis",
+            ordered=False,
+            negotiated=True,
+            id=channel_id,
+            maxRetransmits=0,
+        )
+
+        @chn.on("open")
+        def on_open():
+            self._data_chns[sid] = chn
+
+        @chn.on("close")
+        @chn.on("closing")
+        def on_close():
+            self._data_chns.pop(sid, None)
+
+        return 200
+
     async def on_sub_rtc(self, sid, sdp):
         # log.debug("%s\t%s", sid, sdp)
-        client_sdp = RTCSessionDescription(**sdp)
-
+        self._rtc_conns[sid] = "waiting"
         conn = RTCPeerConnection(configuration=RTCConfiguration(iceServers=[]))
-        # chn = conn.createDataChannel("data")
-        conn.addTrack(self.livestream_track)
-        self._rtc_conns[sid] = conn
+        self._live_tracks[sid] = tracks = LiveStreamTrack()
+        conn.addTrack(tracks)
 
-        # @chn.on("open")
-        # def on_open():
-        #     pass
+        self._rtc_conns[sid] = conn  # cannot receive ICE until a certain state?
 
+        client_sdp = RTCSessionDescription(**sdp)
         await conn.setRemoteDescription(client_sdp)
         await conn.setLocalDescription(await conn.createAnswer())
 
@@ -140,7 +178,9 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
         # aiortc at least can receive ICE trickle, but its very recent
         # client side workaround was needed due to JSON representation incompatibility
 
-        conn = self._rtc_conns.get(sid, None)
+        while self._rtc_conns.get(sid, None) == "waiting":
+            asyncio.sleep(0)  # is this bad?
+        conn = self._rtc_conns[sid]
         if conn:  # conn might not be established yet, or errant client
             await conn.addIceCandidate(RTCIceCandidate(**candidate))
 
@@ -148,17 +188,16 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
         log.warning(sid)
         return "bong"
 
-    def _prepare_output(self, img, data):
-        img = self._encode(img[0])
-
+    def _prepare_output(self, data):
         # We running into the Python object caching issue again!
         out = {}
+        # out = {"sent_time": time.time()}
         for name, datum in data.items():
             if datum is None:
                 continue
             out[name] = self.formatters[name](datum, img_encoder=self._encode)
 
-        return img, out
+        return msgpack.dumps(out)
 
     async def _loop(self):
         try:
@@ -171,11 +210,21 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
         except AttributeError:
             pass
         self._prev_id = img[1]
-        self.livestream_track.width = img[0].shape[1]
-        self.livestream_track.height = img[0].shape[0]
-        self.livestream_track.send_frame(img[0])
-        img, out = await asyncio.to_thread(self._prepare_output, img, data)
-        await self.emit("frame", {"img": img, "data": out}, room=self.room_name)
+        # img, out = await asyncio.gather(
+        #     asyncio.to_thread(self._encode, img[0]),
+        #     asyncio.to_thread(self._prepare_output, data),
+        # )
+        # await self.emit("frame", {"img": img, "data": out}, room=self.room_name)
+
+        enc = await asyncio.to_thread(self._prepare_output, data)
+        # There are a few errors that might happen here due to things closing during a disconnect
+        try:
+            for chn in self._data_chns.values():
+                chn.send(enc)
+            for track in self._live_tracks.values():
+                track.send_frame(img[0])
+        except:
+            pass
         self.fps_callback()
 
     def send(self, img: Tuple[np.ndarray, int], data: dict[str, Any]):
@@ -188,6 +237,8 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
             formatters if isinstance(formatters, dict) else self.formatters
         )
         self._rtc_conns: dict[str, RTCPeerConnection] = {}
+        self._data_chns: dict[str, RTCDataChannel] = {}
+        self._live_tracks: dict[str, LiveStreamTrack] = {}
         self._encode = lambda im: encodeImg(im, **self.cv2_enc)
         self._task = set_interval(self._loop, self.max_fps)
         log.debug(f"{type(self).__name__} opened!")
@@ -196,6 +247,10 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
         self.is_open = False
         log.debug(f"{type(self).__name__} closing...")
         await self.emit("close", room=self.room_name)
+
+        for c in self._data_chns.values():
+            c.close()
+
         await gather_and_reraise(
             self.close_room(self.room_name),
             cancel_and_join(self._task),

@@ -140,6 +140,12 @@ def main(cfg: DictConfig):
             logging.getLogger("nicepipe").setLevel(logging.DEBUG)
             log.setLevel(logging.DEBUG)
 
+            # these 2 are really noisy
+            logging.getLogger("aioice.ice").setLevel(
+                max(logging.WARNING, cfg.misc.log_level)
+            )
+            logging.getLogger("aiortc").setLevel(max(logging.INFO, cfg.misc.log_level))
+
             log.info(
                 f":smiley: hewwo world! :eggplant: JHTech's nicepipe [red]v{__version__}[/red]!",
                 extra={"markup": True, "highlighter": None},

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nicepipe"
-version = "0.6.0"
+version = "0.6.1"
 description = "remote worker for video inference"
 license = "Proprietary"
 authors = ["John-Henry Lim <42513874+Interpause@users.noreply.github.com>"]
@@ -88,6 +88,7 @@ av = "^9.2.0"
 deep-sort-realtime = { path = 'submodules/deep_sort_realtime', develop = true }
 # onnxruntime = "^1.11.1"
 # onnxruntime-gpu = "^1.11.1"
+msgpack = "^1.0.3"
 
 [tool.poetry.group.dev.dependencies]
 poethepoet = "^0.13.1"
