@@ -84,8 +84,8 @@ def show_camera():
             window_height = dpg.get_item_height(window_tag)
             window_width = dpg.get_item_width(window_tag)
             scale_factor = min(window_height / height, window_width / width)
-            new_height = int(height * scale_factor)
-            new_width = int(width * scale_factor)
+            new_height = height * scale_factor
+            new_width = width * scale_factor
             dpg.set_item_height(cam, new_height)
             dpg.set_item_width(cam, new_width)
             dpg.set_item_pos(

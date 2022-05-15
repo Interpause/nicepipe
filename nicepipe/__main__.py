@@ -65,7 +65,12 @@ async def loop(cfg: nicepipeCfg):
         gui_sink, cam_window = show_camera()
         dpg.set_primary_window(cam_window, True)
 
-        with dpg.window(label="Logs"):
+        with dpg.window(
+            label="Logs",
+            no_close=True,
+            autosize=True,
+            collapsed=True,
+        ):
             gui_log_handler.show()
 
         async with start_api(log_level=cfg.misc.log_level) as (app, sio):
@@ -78,6 +83,7 @@ async def loop(cfg: nicepipeCfg):
                     resume_task = asyncio.create_task(resume_live_display())
 
                 async for _ in RLLoop(5):
+                    gui_log_handler.update()
                     if not dpg.is_dearpygui_running():
                         break
 

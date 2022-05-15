@@ -19,6 +19,11 @@ DEFAULT_FORMATTER = Formatter(
 
 
 class GUILogHandler(Handler):
+    tabsize = 2
+    wrap_char = 120
+    lines = 50
+    wrap_indent = " " * 8
+
     def __init__(self, level=NOTSET, maxlen=500):
         super().__init__(level=level)
         self._msg_log = deque([], maxlen)
@@ -26,25 +31,36 @@ class GUILogHandler(Handler):
         self._tag = f"logs-{uuid.uuid4()}"
         self._ready = False
         self._textwrapper = TextWrapper(
-            width=120, tabsize=2, subsequent_indent="        "
+            width=self.wrap_char,
+            tabsize=self.tabsize,
+            subsequent_indent=self.wrap_indent,
         )
 
     def show(self):
         if not self._ready:
             with dpg.value_registry():
                 dpg.add_string_value(default_value="loading...", tag=self._tag)
-            text = dpg.add_input_text(multiline=True, readonly=True, source=self._tag)
-            dpg.set_item_width(text, -1)
-            dpg.set_item_height(text, -1)
+            self._textbox = dpg.add_input_text(
+                multiline=True, readonly=True, source=self._tag
+            )
+            dpg.set_item_width(self._textbox, -1)
+            dpg.set_item_height(self._textbox, -1)
         self._ready = True
-        dpg.set_value(self._tag, "\n".join(self._msg_log))
+
+    def update(self):
+        if self._ready and dpg.is_dearpygui_running():
+            dpg.set_value(self._tag, "\n".join(self._msg_log))
+            size = dpg.get_text_size(
+                "\n".join(["M" * (self.wrap_char + 1)] * self.lines), wrap_width=-1
+            )
+
+            dpg.set_item_width(self._textbox, size[0])
+            dpg.set_item_height(self._textbox, size[1])
 
     def emit(self, record):
         try:
             msg = self.format(record)
             self._msg_log.append(self._textwrapper.fill(msg))
-            if self._ready and dpg.is_dearpygui_running():
-                dpg.set_value(self._tag, "\n".join(self._msg_log))
         except RecursionError:  # See issue 36272
             raise
         except Exception:
