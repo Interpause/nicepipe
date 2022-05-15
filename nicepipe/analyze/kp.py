@@ -1,5 +1,5 @@
 from __future__ import annotations
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from typing import Optional, Tuple
 
 import cv2
@@ -47,16 +47,21 @@ class orbCfg:
     fastThreshold: int = 20
 
 
+# NOTE: THE UNDERLYING OPENCV IMPLEMENTATION IS MULTI-THREADED
+# UNREASONABLE VALUES HERE, COUPLED WITH FEATURE-RICH IMAGES
+# WILL LAG THE ENTIRE COMPUTER, WHICH MEANS EVERYTHING WILL LAG
+
+
 @dataclass
 class queryDetCfg(orbCfg):
     # dont need as many features for query images
-    nfeatures: int = 2000
+    nfeatures: int = 1000
 
 
 @dataclass
 class testDetCfg(orbCfg):
     # test images will naturally have more potential features
-    nfeatures: int = 100000
+    nfeatures: int = 10000
 
 
 @dataclass
