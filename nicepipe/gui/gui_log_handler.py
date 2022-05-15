@@ -20,9 +20,9 @@ DEFAULT_FORMATTER = Formatter(
 
 class GUILogHandler(Handler):
     tabsize = 2
-    wrap_char = 120
+    wrap_char = 100
     lines = 50
-    wrap_indent = " " * 8
+    wrap_indent = " " * 4
 
     def __init__(self, level=NOTSET, maxlen=500):
         super().__init__(level=level)
@@ -41,10 +41,8 @@ class GUILogHandler(Handler):
             with dpg.value_registry():
                 dpg.add_string_value(default_value="loading...", tag=self._tag)
             self._textbox = dpg.add_input_text(
-                multiline=True, readonly=True, source=self._tag
+                multiline=True, readonly=True, source=self._tag, height=-1, width=-1
             )
-            dpg.set_item_width(self._textbox, -1)
-            dpg.set_item_height(self._textbox, -1)
         self._ready = True
 
     def update(self):
@@ -60,7 +58,7 @@ class GUILogHandler(Handler):
     def emit(self, record):
         try:
             msg = self.format(record)
-            self._msg_log.append(self._textwrapper.fill(msg))
+            self._msg_log.appendleft(self._textwrapper.fill(msg))
         except RecursionError:  # See issue 36272
             raise
         except Exception:

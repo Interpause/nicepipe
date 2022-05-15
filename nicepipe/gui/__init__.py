@@ -16,9 +16,6 @@ from ..utils import add_fps_counter, cancel_and_join, RLLoop
 
 log = logging.getLogger(__name__)
 
-# TODO:
-# Graph FPS display
-
 
 @contextmanager
 def create_gui():
@@ -135,22 +132,26 @@ def show_camera():
 
     return GUIStreamer, window
 
-
-# CellPadding = 0
-# texture input should be transparent bg
-
+def show_all_dpg_tools():
+    dpg.show_documentation()
+    dpg.show_style_editor()
+    dpg.show_debug()
+    dpg.show_about()
+    dpg.show_metrics()
+    dpg.show_font_manager()
+    dpg.show_item_registry()
+    dpg.configure_app(docking=True, docking_space=True)
 
 @asynccontextmanager
 async def setup_gui():
     with create_gui() as render:
-        # dpg.show_documentation()
-        dpg.show_style_editor()
-        # dpg.show_debug()
-        # dpg.show_about()
-        # dpg.show_metrics()
-        # dpg.show_font_manager()
-        # dpg.show_item_registry()
-        # dpg.configure_app(docking=True, docking_space=True)
+        with dpg.theme() as global_theme:
+            with dpg.theme_component(dpg.mvAll):
+                dpg.add_theme_style(
+                    dpg.mvStyleVar_WindowPadding, 0, category=dpg.mvThemeCat_Core
+                )
+
+        dpg.bind_theme(global_theme)
 
         task = asyncio.create_task(gui_loop(render))
         try:

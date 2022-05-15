@@ -12,6 +12,7 @@ from omegaconf.errors import OmegaConfBaseException
 import dearpygui.dearpygui as dpg
 from rich.prompt import Confirm
 from nicepipe.api import start_api
+from nicepipe.gui.fps_display import show_fps
 from nicepipe.gui.gui_log_handler import create_gui_log_handler
 from nicepipe.input.cv2 import print_cv2_debug
 
@@ -24,7 +25,7 @@ from nicepipe.utils import (
     RLLoop,
     change_cwd,
 )
-from nicepipe.gui import setup_gui, show_camera
+from nicepipe.gui import setup_gui, show_all_dpg_tools, show_camera
 from nicepipe.worker import create_worker
 
 
@@ -61,17 +62,50 @@ async def resume_live_display():
 
 
 async def loop(cfg: nicepipeCfg):
+    from nicepipe import __version__
+
     async with setup_gui():
         gui_sink, cam_window = show_camera()
         dpg.set_primary_window(cam_window, True)
 
-        with dpg.window(
-            label="Logs",
-            no_close=True,
-            autosize=True,
-            collapsed=True,
-        ):
+        # is only their initial values; good enough for positioning
+        win_height = dpg.get_viewport_client_height()
+        win_width = dpg.get_viewport_client_width()
+
+        with dpg.window(label="Logs", tag="logs_window", autosize=True, show=False):
             gui_log_handler.show()
+
+        with dpg.window(
+            label="Loop FPS",
+            tag="fps_window",
+            pos=(0, win_height * 0.2),
+            height=win_height * 0.4,
+            width=win_width * 0.5,
+            show=False,
+        ):
+            update_fps_bar = show_fps()
+
+        with dpg.window(
+            label="Credits",
+            pos=(win_width * 0.3, win_height * 0.3),
+            height=win_height * 0.4,
+            width=win_width * 0.4,
+            modal=True,
+            show=False,
+            tag="about_window",
+        ):
+            dpg.add_text(f"Nicepipe v{__version__}")
+            dpg.add_text("Powered by JHTech")
+
+        with dpg.viewport_menu_bar():
+            dpg.add_menu_item(
+                label="Logs", callback=lambda: dpg.show_item("logs_window")
+            )
+            dpg.add_menu_item(label="FPS", callback=lambda: dpg.show_item("fps_window"))
+            dpg.add_menu_item(label="DPG", callback=show_all_dpg_tools)
+            dpg.add_menu_item(
+                label="About", callback=lambda: dpg.show_item("about_window")
+            )
 
         async with start_api(log_level=cfg.misc.log_level) as (app, sio):
             worker = create_worker(cfg)
@@ -82,11 +116,11 @@ async def loop(cfg: nicepipeCfg):
                 if cfg.misc.console_live_display:
                     resume_task = asyncio.create_task(resume_live_display())
 
-                async for _ in RLLoop(5):
+                async for _ in RLLoop(15):
+                    update_fps_bar()
                     gui_log_handler.update()
                     if not dpg.is_dearpygui_running():
                         break
-
                 if cfg.misc.console_live_display:
                     await cancel_and_join(resume_task)
                 rich_live_display.stop()
