@@ -40,10 +40,14 @@ fps_bar = Progress(
     TimeElapsedColumn(),
     TaskSpeed(),
     "{task.description}",
-    speed_estimate_period=2,
+    speed_estimate_period=0.5,
     console=console,
 )
 """used for tracking fps"""
+
+
+def steal_progress_bar_info():
+    return fps_bar.tasks
 
 
 def add_fps_counter(name, total=float("inf"), advance=1):
