@@ -4,7 +4,6 @@ import logging
 from typing import Any, Tuple
 from dataclasses import dataclass, field
 import msgpack
-import time
 
 import numpy as np
 from socketio import AsyncNamespace
@@ -126,7 +125,14 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
         return 200
 
     def on_negotiate_channel(self, sid, channel_id):
-        chn = self._rtc_conns[sid].createDataChannel(
+        while self._rtc_conns.get(sid, None) == "waiting":
+            asyncio.sleep(0)  # is this bad?
+
+        conn = self._rtc_conns.get(sid, None)
+        if not conn:
+            return 500
+
+        chn = conn.createDataChannel(
             "analysis",
             ordered=False,
             negotiated=True,
@@ -180,7 +186,7 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
 
         while self._rtc_conns.get(sid, None) == "waiting":
             asyncio.sleep(0)  # is this bad?
-        conn = self._rtc_conns[sid]
+        conn = self._rtc_conns.get(sid, None)
         if conn:  # conn might not be established yet, or errant client
             await conn.addIceCandidate(RTCIceCandidate(**candidate))
 
