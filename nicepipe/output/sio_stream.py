@@ -69,7 +69,7 @@ class LiveStreamTrack(VideoStreamTrack):
         self.height = height
         self.width = width
         self.counter = 0
-        self.frame = VideoFrame.from_ndaray(
+        self.frame = VideoFrame.from_ndarray(
             np.zeros((height, width, 3), dtype=np.uint8), format="bgr24"
         )
 
@@ -160,7 +160,9 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
         # log.debug("%s\t%s", sid, sdp)
         self._rtc_conns[sid] = "waiting"
         conn = RTCPeerConnection(configuration=RTCConfiguration(iceServers=[]))
-        self._live_tracks[sid] = tracks = LiveStreamTrack(height=self.height, width=self.width)
+        self._live_tracks[sid] = tracks = LiveStreamTrack(
+            height=self.height, width=self.width
+        )
         conn.addTrack(tracks)
 
         self._rtc_conns[sid] = conn  # cannot receive ICE until a certain state?
