@@ -64,6 +64,11 @@ async def resume_live_display():
 async def loop(cfg: nicepipeCfg):
     from nicepipe import __version__
 
+    live_cfg = {"visual_mp_pose": True, "visual_kp": True, "visual_tape": True}
+
+    def _config_toggle(checkbox, value, user_data):
+        live_cfg[user_data] = value
+
     async with setup_gui():
         gui_sink, cam_window = show_camera()
         dpg.set_primary_window(cam_window, True)
@@ -71,6 +76,26 @@ async def loop(cfg: nicepipeCfg):
         # is only their initial values; good enough for positioning
         win_height = dpg.get_viewport_client_height()
         win_width = dpg.get_viewport_client_width()
+
+        with dpg.window(label="Settings", tag="config_window", show=False):
+            dpg.add_checkbox(
+                label="MP Pose Visualization",
+                user_data="visual_mp_pose",
+                callback=_config_toggle,
+                default_value=live_cfg["visual_mp_pose"],
+            )
+            dpg.add_checkbox(
+                label="Keypoint Matcher Visualization",
+                user_data="visual_kp",
+                callback=_config_toggle,
+                default_value=live_cfg["visual_kp"],
+            )
+            dpg.add_checkbox(
+                label="Duct Tape Visualization",
+                user_data="visual_tape",
+                callback=_config_toggle,
+                default_value=live_cfg["visual_tape"],
+            )
 
         with dpg.window(label="Logs", tag="logs_window", autosize=True, show=False):
             gui_log_handler.show()
@@ -99,6 +124,9 @@ async def loop(cfg: nicepipeCfg):
 
         with dpg.viewport_menu_bar():
             dpg.add_menu_item(
+                label="Settings", callback=lambda: dpg.show_item("config_window")
+            )
+            dpg.add_menu_item(
                 label="Logs", callback=lambda: dpg.show_item("logs_window")
             )
             dpg.add_menu_item(label="FPS", callback=lambda: dpg.show_item("fps_window"))
@@ -109,16 +137,17 @@ async def loop(cfg: nicepipeCfg):
 
         async with start_api(log_level=cfg.misc.log_level) as (app, sio):
             worker = create_worker(cfg)
-            worker.sinks["gui"] = gui_sink()
+            worker.sinks["gui"] = gui_sink
             sio.register_namespace(worker.sinks["sio"])
 
             async with worker:
                 if cfg.misc.console_live_display:
                     resume_task = asyncio.create_task(resume_live_display())
 
-                async for _ in RLLoop(15):
+                async for _ in RLLoop(5):
                     update_fps_bar()
                     gui_log_handler.update()
+                    gui_sink.config_visuals(live_cfg)
                     if not dpg.is_dearpygui_running():
                         break
                 if cfg.misc.console_live_display:

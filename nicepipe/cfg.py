@@ -16,7 +16,8 @@ log = logging.getLogger(__name__)
 class miscCfg:
     skip_tests: bool = False
     log_level: int = logging.INFO
-    save_logs: bool = True
+    # TODO: disabled until we can get the real CWD in child processes on windows
+    save_logs: bool = False
     console_live_display: bool = True
 
 

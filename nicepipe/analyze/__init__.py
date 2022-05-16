@@ -2,6 +2,8 @@ from __future__ import annotations
 from typing import Any, Optional
 from dataclasses import dataclass, field
 
+from nicepipe.analyze.escape_hatch import create_tape_worker, tapeCfg
+
 # from nicepipe.analyze.yolo import create_yolo_worker
 from nicepipe.analyze.kp import kpDetCfg, create_kp_worker
 from nicepipe.analyze.mp_pose import mpPoseWorkerCfg, create_mp_pose_worker
@@ -24,6 +26,7 @@ class analysisCfg:
     clothes: Optional[Any] = field(default_factory=dict)
     mp_pose: Optional[mpPoseWorkerCfg] = field(default_factory=mpPoseWorkerCfg)
     kp: Optional[kpDetCfg] = field(default_factory=kpDetCfg)
+    tape: Optional[tapeCfg] = field(default_factory=tapeCfg)
 
 
 def create_analyzers(
@@ -37,6 +40,8 @@ def create_analyzers(
     #     analyzers["clothes"] = create_yolo_worker(**cfg.clothes)
     if cfg.kp:
         analyzers["kp"] = create_kp_worker(**cfg.kp)
+    if cfg.tape:
+        analyzers["tape"] = create_tape_worker(**cfg.tape)
 
     if add_fps_counters:
         for name, analyzer in analyzers.items():

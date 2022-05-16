@@ -32,10 +32,10 @@ def create_gui():
 
 async def gui_loop(render):
     gui_loop = add_fps_counter("main: GUI")
-    async for _ in RLLoop(60, update_func=gui_loop):
+    async for _ in RLLoop(30, update_func=gui_loop):
         render()
         if not dpg.is_dearpygui_running():
-            break
+            continue
 
 
 def draw_point(img, pt, color, size=2):
@@ -96,14 +96,22 @@ def show_camera():
             dpg.add_item_resize_handler(callback=resize_cam)
         dpg.bind_item_handler_registry("cam_window", "cam_resize_handler")
 
+    # TODO: This must be refactored. especially as more components & their debug visuals are added
     class GUIStreamer(Sink):
         """dirty hack output sink for the GUI"""
 
         async def open(self, **_):
-            pass
+            self.visual_mp_pose = True
+            self.visual_kp = True
+            self.visual_tape = True
 
         async def close(self):
             pass
+
+        def config_visuals(self, cfg):
+            self.visual_mp_pose = cfg["visual_mp_pose"]
+            self.visual_kp = cfg["visual_kp"]
+            self.visual_tape = cfg["visual_tape"]
 
         def send(self, img, data):
             img = img[0]
@@ -111,18 +119,23 @@ def show_camera():
                 initialize(img.shape[1], img.shape[0])
 
             imbuffer[...] = img[..., ::-1] / 255
+            h, w = imbuffer.shape[:2]
+
             mp_results = data.get("mp_pose", None)
-            if not mp_results is None:
+            if not mp_results is None and self.visual_mp_pose:
                 mp_drawing.draw_landmarks(
                     imbuffer,
                     mp_results.pose_landmarks,
                     mp_pose.POSE_CONNECTIONS,
                     landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style(),
                 )
+
             kp_results = data.get("kp", None)
-            if not kp_results is None:
-                for (name, rect) in kp_results["dets"]:
-                    cv2.polylines(imbuffer, [np.int32(rect)], True, 255, 3, cv2.LINE_AA)
+            if not kp_results is None and self.visual_kp:
+                for (name, box) in kp_results["dets"]:
+                    cv2.polylines(
+                        imbuffer, [box.astype(np.int32)], True, (0, 255, 0), 2
+                    )
                 if "debug" in kp_results:
                     debug_kp = kp_results["debug"]
                     # for pt in debug_kp["all_kp"]:
@@ -130,7 +143,20 @@ def show_camera():
                     for pt in debug_kp["matched_kp"]:
                         draw_point(imbuffer, pt, (0, 255, 0))
 
-    return GUIStreamer, window
+            tape_results = data.get("tape", None)
+            if not tape_results is None and self.visual_tape:
+                for det in tape_results:
+                    x1, y1, x2, y2, conf, cls = det
+                    cv2.rectangle(
+                        imbuffer,
+                        (int(x1 * w), int(y1 * h)),
+                        (int(x2 * w), int(y2 * h)),
+                        (255, 0, 0),
+                        2,
+                    )
+
+    return GUIStreamer(), window
+
 
 def show_all_dpg_tools():
     dpg.show_documentation()
@@ -140,7 +166,7 @@ def show_all_dpg_tools():
     dpg.show_metrics()
     dpg.show_font_manager()
     dpg.show_item_registry()
-    dpg.configure_app(docking=True, docking_space=True)
+
 
 @asynccontextmanager
 async def setup_gui():
