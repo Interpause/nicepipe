@@ -80,6 +80,7 @@ class kpDetCfg(AnalysisWorkerCfg):
     """threshold for keypoint to be considered a match"""
     debug: bool = False
     """whether to pass data needed for debug"""
+    max_fps: int = 30
 
 
 def calc_features(img, detector, descriptor=None, keypoints=None):
@@ -99,7 +100,18 @@ def calc_features(img, detector, descriptor=None, keypoints=None):
 
 
 # TODO: figure out the Homography stuff for calibration reasons
-def find_object(matches, query_kp, test_kp):
+# best explanation of homography method I could find:
+# http://amroamroamro.github.io/mexopencv/matlab/cv.findHomography.html
+# Given very few outliers (according to test), least squares is best
+# In brief:
+# Least Squares (0): Use all points. Effective only when few outliers
+# cv2.RANSAC & cv2.RHO:
+#   - attempts to find best set of inliers, but needs threshold
+#   - RHO is more accurate but needs more points than RANSAC
+# cv2.LMEDS: like voting, needs at least 50% inliers
+
+
+def find_object(matches, query_kp, test_kp, method=cv2.LMEDS, inlier_thres=5.0):
     # coordinates in query & test image that match
     query_pts = cv2.KeyPoint_convert(
         query_kp, tuple(m.queryIdx for m in matches)
@@ -107,7 +119,7 @@ def find_object(matches, query_kp, test_kp):
     test_pts = cv2.KeyPoint_convert(
         test_kp, tuple(m.trainIdx for m in matches)
     ).reshape(-1, 1, 2)
-    transform, mask = cv2.findHomography(query_pts, test_pts, cv2.RANSAC, 5.0)
+    transform, mask = cv2.findHomography(query_pts, test_pts, method, inlier_thres)
     return transform, mask
 
 
@@ -190,6 +202,8 @@ class KPDetector(BaseAnalyzer, kpDetCfg):
         o = {}
         results = []
         o["dets"] = results
+        o["h"] = img.shape[0]
+        o["w"] = img.shape[1]
         if len(t_kp) == 0:
             return o
 
@@ -204,11 +218,11 @@ class KPDetector(BaseAnalyzer, kpDetCfg):
             if len(matches) < self.min_matches:
                 continue
             transform, _ = find_object(matches, q_kp, t_kp)
-            rect = np.float32(
+            box = np.float32(
                 ((0, 0), (0, qh - 1), (qw - 1, qh - 1), (qw - 1, 0))
             ).reshape(-1, 1, 2)
-            rect = cv2.perspectiveTransform(rect, transform)
-            results.append((name, rect.tolist()))
+            box = cv2.perspectiveTransform(box, transform)
+            results.append((name, box))
         # debug code will only work if img isnt rescaled
         if self.debug:
             o["debug"] = {
@@ -227,8 +241,16 @@ def create_kp_worker(
         kwargs = kpDetCfg()
 
     def format_output(out, **_):
-        out.pop("debug", None)
-        return out
+        # reshape into smth more palatable (& normalize)
+        h, w = out["h"], out["w"]
+        res = []
+        for (name, box) in out["dets"]:
+            norm_box = box.copy()
+            norm_box.shape = (-1, 2)
+            norm_box[:, 0] /= w
+            norm_box[:, 1] /= h
+            res.append((name, norm_box.tolist()))
+        return res
 
     return AnalysisWorker(
         analyzer=KPDetector(**kwargs),
