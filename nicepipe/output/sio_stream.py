@@ -64,11 +64,14 @@ aiortc.codecs.h264.MAX_BITRATE = aiortc.codecs.vpx.MAX_BITRATE = int(50e6)
 
 
 class LiveStreamTrack(VideoStreamTrack):
-    def __init__(self):
+    def __init__(self, height=480, width=640):
         super().__init__()
-        self.height = 480
-        self.width = 640
+        self.height = height
+        self.width = width
         self.counter = 0
+        self.frame = VideoFrame.from_ndaray(
+            np.zeros((height, width, 3), dtype=np.uint8), format="bgr24"
+        )
 
     def send_frame(self, img):
         self.frame = VideoFrame.from_ndarray(img, format="bgr24")
@@ -95,6 +98,8 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
 
     formatters: dict[str, AnalysisWorker] = field(default_factory=dict)
     """formatters are needed in order to jsonify analysis from each."""
+    height: int = 480
+    width: int = 640
 
     def on_connect(self, sid, environ, auth):
         # TODO: authenticate client; check if sufficient rights to VIEW
@@ -155,7 +160,7 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
         # log.debug("%s\t%s", sid, sdp)
         self._rtc_conns[sid] = "waiting"
         conn = RTCPeerConnection(configuration=RTCConfiguration(iceServers=[]))
-        self._live_tracks[sid] = tracks = LiveStreamTrack()
+        self._live_tracks[sid] = tracks = LiveStreamTrack(height=self.height, width=self.width)
         conn.addTrack(tracks)
 
         self._rtc_conns[sid] = conn  # cannot receive ICE until a certain state?
@@ -216,6 +221,9 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
         except AttributeError:
             pass
         self._prev_id = img[1]
+        self.height = img[0].shape[0]
+        self.width = img[0].shape[1]
+
         # img, out = await asyncio.gather(
         #     asyncio.to_thread(self._encode, img[0]),
         #     asyncio.to_thread(self._prepare_output, data),
