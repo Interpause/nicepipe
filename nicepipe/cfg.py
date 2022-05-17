@@ -19,7 +19,6 @@ class miscCfg:
     # TODO: disabled until we can get the real CWD in child processes on windows
     save_logs: bool = False
     console_live_display: bool = True
-    disable_gui: bool = False
 
 
 @dataclass

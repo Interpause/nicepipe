@@ -104,6 +104,7 @@ def show_camera():
             self.visual_mp_pose = True
             self.visual_kp = True
             self.visual_tape = True
+            self.show_cam = False
 
         async def close(self):
             pass
@@ -112,8 +113,11 @@ def show_camera():
             self.visual_mp_pose = cfg["visual_mp_pose"]
             self.visual_kp = cfg["visual_kp"]
             self.visual_tape = cfg["visual_tape"]
+            self.show_cam = cfg["show_cam"]
 
         def send(self, img, data):
+            if not self.show_cam:
+                return
             img = img[0]
             if imbuffer is None:
                 initialize(img.shape[1], img.shape[0])
@@ -138,8 +142,8 @@ def show_camera():
                     )
                 if "debug" in kp_results:
                     debug_kp = kp_results["debug"]
-                    # for pt in debug_kp["all_kp"]:
-                    #     draw_point(imbuffer, pt, (255, 0, 0))
+                    for pt in debug_kp["all_kp"]:
+                        draw_point(imbuffer, pt, (255, 0, 0))
                     for pt in debug_kp["matched_kp"]:
                         draw_point(imbuffer, pt, (0, 255, 0))
 

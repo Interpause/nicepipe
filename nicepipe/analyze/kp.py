@@ -221,8 +221,11 @@ class KPDetector(BaseAnalyzer, kpDetCfg):
             box = np.float32(
                 ((0, 0), (0, qh - 1), (qw - 1, qh - 1), (qw - 1, 0))
             ).reshape(-1, 1, 2)
-            box = cv2.perspectiveTransform(box, transform)
-            results.append((name, box))
+            try:
+                box = cv2.perspectiveTransform(box, transform)
+                results.append((name, box))
+            except:
+                pass
         # debug code will only work if img isnt rescaled
         if self.debug:
             o["debug"] = {

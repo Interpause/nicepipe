@@ -64,7 +64,7 @@ async def resume_live_display():
 async def loop(cfg: nicepipeCfg):
     from nicepipe import __version__
 
-    live_cfg = {"visual_mp_pose": True, "visual_kp": True, "visual_tape": True}
+    live_cfg = {"visual_mp_pose": True, "visual_kp": True, "visual_tape": True, "show_cam": False}
 
     def _config_toggle(checkbox, value, user_data):
         live_cfg[user_data] = value
@@ -78,6 +78,12 @@ async def loop(cfg: nicepipeCfg):
         win_width = dpg.get_viewport_client_width()
 
         with dpg.window(label="Settings", tag="config_window", show=False):
+            dpg.add_checkbox(
+                label="Show Cam",
+                user_data="show_cam",
+                callback=_config_toggle,
+                default_value=live_cfg["show_cam"]
+            )
             dpg.add_checkbox(
                 label="MP Pose Visualization",
                 user_data="visual_mp_pose",
@@ -137,8 +143,7 @@ async def loop(cfg: nicepipeCfg):
 
         async with start_api(log_level=cfg.misc.log_level) as (app, sio):
             worker = create_worker(cfg)
-            if not cfg.misc.disable_gui:
-                worker.sinks["gui"] = gui_sink
+            worker.sinks["gui"] = gui_sink
             sio.register_namespace(worker.sinks["sio"])
 
             async with worker:
