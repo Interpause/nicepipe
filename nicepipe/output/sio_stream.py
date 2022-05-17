@@ -69,9 +69,9 @@ class LiveStreamTrack(VideoStreamTrack):
         self.height = height
         self.width = width
         self.counter = 0
-        self.frame = VideoFrame.from_ndarray(
-            np.zeros((height, width, 3), dtype=np.uint8), format="bgr24"
-        )
+        img = np.zeros((height, width, 3), dtype=np.uint8)
+        img[..., :3] = (0,255,0)
+        self.frame = VideoFrame.from_ndarray(img, format="bgr24")
 
     def send_frame(self, img):
         self.frame = VideoFrame.from_ndarray(img, format="bgr24")
