@@ -137,7 +137,8 @@ async def loop(cfg: nicepipeCfg):
 
         async with start_api(log_level=cfg.misc.log_level) as (app, sio):
             worker = create_worker(cfg)
-            worker.sinks["gui"] = gui_sink
+            if not cfg.misc.disable_gui:
+                worker.sinks["gui"] = gui_sink
             sio.register_namespace(worker.sinks["sio"])
 
             async with worker:
