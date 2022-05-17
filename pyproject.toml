@@ -89,6 +89,7 @@ deep-sort-realtime = { path = 'submodules/deep_sort_realtime', develop = true }
 # onnxruntime = "^1.11.1"
 # onnxruntime-gpu = "^1.11.1"
 msgpack = "^1.0.3"
+netifaces = {path = "netifaces-0.11.0-cp39-cp39-win_amd64.whl"}
 
 [tool.poetry.group.dev.dependencies]
 poethepoet = "^0.13.1"
