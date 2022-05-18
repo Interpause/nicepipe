@@ -70,6 +70,7 @@ def prep_send_mp_results(results: SimpleNamespace, img_encoder=encodeJPG, **_):
     pose = None
     if not results is None:
         pose = pb_json.MessageToDict(results.pose_landmarks)["landmark"]
+        # print(pose)
         if hasattr(results, "segmentation_mask"):
             mask = img_encoder(results.segmentation_mask)
     return {"mask": mask, "pose": pose}

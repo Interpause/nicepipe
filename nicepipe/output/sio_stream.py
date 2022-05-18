@@ -1,9 +1,12 @@
 from __future__ import annotations
 import asyncio
+from copy import deepcopy
 import logging
+import time
 from typing import Any, Tuple
 from dataclasses import dataclass, field
 import msgpack
+import json
 
 import numpy as np
 from socketio import AsyncNamespace
@@ -198,12 +201,15 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
     def _prepare_output(self, data):
         # We running into the Python object caching issue again!
         out = {}
+        # if(data['mp_pose'] is None): print('a', time.time())
         # out = {"sent_time": time.time()}
         for name, datum in data.items():
             if datum is None:
                 continue
             out[name] = self.formatters[name](datum, img_encoder=self._encode)
-
+        
+        # if(out.get('mp_pose', None) is None): print('b', time.time())
+        # else: print(out['mp_pose']['pose'][0])
         return msgpack.dumps(out)
 
     async def _loop(self):
@@ -231,19 +237,27 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
 
             # output thread should have higher priority
             # dont await = save thread comm time + dont give up to other tasks
+            # assert not data['mp_pose'] is None
             enc = self._prepare_output(data)
 
             # There are a few errors that might happen here due to things closing during a disconnect
-            try:
-                # TODO: Figure out how to run this on a separate process
-                # aiortc needs the event loop so we cant run the entire loop in another thread
-                for chn in self._data_chns.values():
+            
+            # TODO: Figure out how to run this on a separate process
+            # aiortc needs the event loop so we cant run the entire loop in another thread
+            for id, chn in self._data_chns.items():
+                try:
+                    # print('sending to ', id)
                     chn.send(enc)
-                for track in self._live_tracks.values():
+                    # print('sent to', id)
+
+                except Exception as e:
+                    log.warning(e)
+            for track in self._live_tracks.values():
+                try:
                     track.send_frame(img[0])
-                self.fps_callback()
-            except Exception as e:
-                log.warning(e)
+                except:
+                    log.warning(e)
+            self.fps_callback()
 
     def send(self, img: Tuple[np.ndarray, int], data: dict[str, Any]):
         self._cur_data = (img, data)
