@@ -18,13 +18,7 @@ from aiortc import (
 import aiortc.codecs
 from av import VideoFrame
 
-from ..utils import (
-    cancel_and_join,
-    encodeImg,
-    cv2EncCfg,
-    gather_and_reraise,
-    set_interval,
-)
+from ..utils import RLLoop, cancel_and_join, encodeImg, cv2EncCfg, gather_and_reraise
 from ..analyze import AnalysisWorker
 from .base import Sink, baseSinkCfg
 
@@ -70,7 +64,7 @@ class LiveStreamTrack(VideoStreamTrack):
         self.width = width
         self.counter = 0
         img = np.zeros((height, width, 3), dtype=np.uint8)
-        img[..., :3] = (0,255,0)
+        img[..., :3] = (0, 255, 0)
         self.frame = VideoFrame.from_ndarray(img, format="bgr24")
 
     def send_frame(self, img):
@@ -213,35 +207,43 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
         return msgpack.dumps(out)
 
     async def _loop(self):
-        try:
-            img, data = self._cur_data
-        except (AttributeError, TypeError):
-            return
-        try:
-            if self.lock_fps and img[1] == self._prev_id:
-                return
-        except AttributeError:
-            pass
-        self._prev_id = img[1]
-        self.height = img[0].shape[0]
-        self.width = img[0].shape[1]
+        async for _ in RLLoop(self.max_fps):
+            try:
+                img, data = self._cur_data
+            except (AttributeError, TypeError):
+                continue
+            try:
+                if self.lock_fps and img[1] == self._prev_id:
+                    continue
+            except AttributeError:
+                pass
+            self._prev_id = img[1]
+            self.height = img[0].shape[0]
+            self.width = img[0].shape[1]
 
-        # img, out = await asyncio.gather(
-        #     asyncio.to_thread(self._encode, img[0]),
-        #     asyncio.to_thread(self._prepare_output, data),
-        # )
-        # await self.emit("frame", {"img": img, "data": out}, room=self.room_name)
+            # img, out = await asyncio.gather(
+            #     asyncio.to_thread(self._encode, img[0]),
+            #     asyncio.to_thread(self._prepare_output, data),
+            # )
+            # await self.emit("frame", {"img": img, "data": out}, room=self.room_name)
 
-        enc = await asyncio.to_thread(self._prepare_output, data)
-        # There are a few errors that might happen here due to things closing during a disconnect
-        try:
-            for chn in self._data_chns.values():
-                chn.send(enc)
-            for track in self._live_tracks.values():
-                track.send_frame(img[0])
-        except:
-            pass
-        self.fps_callback()
+            # enc = await asyncio.to_thread(self._prepare_output, data)
+
+            # output thread should have higher priority
+            # dont await = save thread comm time + dont give up to other tasks
+            enc = self._prepare_output(data)
+
+            # There are a few errors that might happen here due to things closing during a disconnect
+            try:
+                # TODO: Figure out how to run this on a separate process
+                # aiortc needs the event loop so we cant run the entire loop in another thread
+                for chn in self._data_chns.values():
+                    chn.send(enc)
+                for track in self._live_tracks.values():
+                    track.send_frame(img[0])
+                self.fps_callback()
+            except Exception as e:
+                log.warning(e)
 
     def send(self, img: Tuple[np.ndarray, int], data: dict[str, Any]):
         self._cur_data = (img, data)
@@ -256,7 +258,7 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
         self._data_chns: dict[str, RTCDataChannel] = {}
         self._live_tracks: dict[str, LiveStreamTrack] = {}
         self._encode = lambda im: encodeImg(im, **self.cv2_enc)
-        self._task = set_interval(self._loop, self.max_fps)
+        self._task = asyncio.create_task(self._loop())
         log.debug(f"{type(self).__name__} opened!")
 
     async def close(self):
