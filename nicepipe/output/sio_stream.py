@@ -1,12 +1,13 @@
 from __future__ import annotations
 import asyncio
-from copy import deepcopy
+from collections import deque
 import logging
 import time
 from typing import Any, Tuple
 from dataclasses import dataclass, field
 import msgpack
-import json
+
+# import json
 
 import numpy as np
 from socketio import AsyncNamespace
@@ -202,12 +203,12 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
         # We running into the Python object caching issue again!
         out = {}
         # if(data['mp_pose'] is None): print('a', time.time())
-        # out = {"sent_time": time.time()}
+        out = {"time_sent": time.time()}
         for name, datum in data.items():
             if datum is None:
                 continue
             out[name] = self.formatters[name](datum, img_encoder=self._encode)
-        
+
         # if(out.get('mp_pose', None) is None): print('b', time.time())
         # else: print(out['mp_pose']['pose'][0])
         return msgpack.dumps(out)
@@ -241,13 +242,18 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
             enc = self._prepare_output(data)
 
             # There are a few errors that might happen here due to things closing during a disconnect
-            
+
             # TODO: Figure out how to run this on a separate process
             # aiortc needs the event loop so we cant run the entire loop in another thread
-            for id, chn in self._data_chns.items():
+            send_coros = deque([])
+            for chn in self._data_chns.items():
                 try:
                     # print('sending to ', id)
                     chn.send(enc)
+                    send_coros.append(
+                        chn._RTCDataChannel__transport._data_channel_flush()
+                    )
+                    send_coros.append(chn._RTCDataChannel__transport._transmit())
                     # print('sent to', id)
 
                 except Exception as e:
@@ -257,6 +263,7 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
                     track.send_frame(img[0])
                 except:
                     log.warning(e)
+            asyncio.gather(send_coros, return_exceptions=True)  # TODO: log these maybe
             self.fps_callback()
 
     def send(self, img: Tuple[np.ndarray, int], data: dict[str, Any]):
