@@ -246,7 +246,7 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
             # TODO: Figure out how to run this on a separate process
             # aiortc needs the event loop so we cant run the entire loop in another thread
             send_coros = deque([])
-            for chn in self._data_chns.items():
+            for chn in self._data_chns.values():
                 try:
                     # print('sending to ', id)
                     chn.send(enc)
@@ -263,7 +263,7 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
                     track.send_frame(img[0])
                 except:
                     log.warning(e)
-            asyncio.gather(send_coros, return_exceptions=True)  # TODO: log these maybe
+            asyncio.gather(*send_coros, return_exceptions=True)  # TODO: log these maybe
             self.fps_callback()
 
     def send(self, img: Tuple[np.ndarray, int], data: dict[str, Any]):
