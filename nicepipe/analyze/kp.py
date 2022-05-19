@@ -61,7 +61,8 @@ class queryDetCfg(orbCfg):
 @dataclass
 class testDetCfg(orbCfg):
     # test images will naturally have more potential features
-    nfeatures: int = 10000
+    # but object in focus will attract more of them so dont need too much
+    nfeatures: int = 5000
 
 
 @dataclass
