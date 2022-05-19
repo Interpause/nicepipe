@@ -229,8 +229,8 @@ class KPDetector(BaseAnalyzer, kpDetCfg):
         # debug code will only work if img isnt rescaled
         if self.debug:
             o["debug"] = {
-                "all_kp": cv2.KeyPoint_convert(t_kp).tolist(),
-                "matched_kp": matched_kp,
+                "all_kp": cv2.KeyPoint_convert(t_kp),
+                "matched_kp": np.array(matched_kp).reshape(-1, 2),
             }
         return o
 

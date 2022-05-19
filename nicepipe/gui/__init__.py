@@ -38,15 +38,6 @@ async def gui_loop(render):
             continue
 
 
-def draw_point(img, pt, color, size=2):
-    x, y = int(pt[0]), int(pt[1])
-    x1 = max(0, x - size)
-    x2 = min(img.shape[1], x + size)
-    y1 = max(0, y - size)
-    y2 = min(img.shape[0], y + size)
-    img[y1:y2, x1:x2, :] = color
-
-
 def show_camera():
     imbuffer = None
     """HWC, RGB, float32"""
@@ -137,15 +128,13 @@ def show_camera():
             kp_results = data.get("kp", None)
             if not kp_results is None and self.visual_kp:
                 for (name, box) in kp_results["dets"]:
-                    cv2.polylines(
-                        imbuffer, [box.astype(np.int32)], True, (0, 255, 0), 2
-                    )
+                    cv2.polylines(imbuffer, [box.astype(np.int32)], True, (0, 1, 0), 2)
                 if "debug" in kp_results:
-                    debug_kp = kp_results["debug"]
-                    for pt in debug_kp["all_kp"]:
-                        draw_point(imbuffer, pt, (255, 0, 0))
-                    for pt in debug_kp["matched_kp"]:
-                        draw_point(imbuffer, pt, (0, 255, 0))
+                    debug = kp_results["debug"]
+                    all_kp = debug["all_kp"].astype(np.uint16)
+                    match_kp = debug["matched_kp"].astype(np.uint16)
+                    imbuffer[all_kp[:, 1], all_kp[:, 0]] = (1, 0, 0)
+                    imbuffer[match_kp[:, 1], match_kp[:, 0]] = (0, 1, 0)
 
             tape_results = data.get("tape", None)
             if not tape_results is None and self.visual_tape:
@@ -155,7 +144,7 @@ def show_camera():
                         imbuffer,
                         (int(x1 * w), int(y1 * h)),
                         (int(x2 * w), int(y2 * h)),
-                        (255, 0, 0),
+                        (1, 0, 0),
                         2,
                     )
 
