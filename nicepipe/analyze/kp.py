@@ -37,8 +37,8 @@ class orbCfg:
 
     nfeatures: int = 500
     """max limit on number of features to be detected"""
-    scaleFactor: float = 1.2
-    nlevels: int = 8
+    scaleFactor: float = 1.25
+    nlevels: int = 6
     edgeThreshold: int = 31
     firstLevel: int = 0
     WTA_K: int = 2
