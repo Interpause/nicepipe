@@ -25,7 +25,7 @@ class mpPoseCfg:
     smooth_landmarks: bool = False
     enable_segmentation: bool = False
     smooth_segmentation: bool = False
-    min_detection_confidence: float = 0.7
+    min_detection_confidence: float = 0.4
     min_tracking_confidence: float = 0.3
 
 
@@ -33,6 +33,7 @@ class mpPoseCfg:
 class mpPoseWorkerCfg(AnalysisWorkerCfg):
     cfg: mpPoseCfg = field(default_factory=mpPoseCfg)
     scale_wh: Optional[Tuple[int, int]] = (640, 360)
+    max_fps: int = 30
 
 
 def serialize_mp_results(results: SimpleNamespace):

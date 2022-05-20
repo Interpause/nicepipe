@@ -37,8 +37,8 @@ class orbCfg:
 
     nfeatures: int = 500
     """max limit on number of features to be detected"""
-    scaleFactor: float = 1.2
-    nlevels: int = 8
+    scaleFactor: float = 1.25
+    nlevels: int = 6
     edgeThreshold: int = 31
     firstLevel: int = 0
     WTA_K: int = 2
@@ -61,7 +61,8 @@ class queryDetCfg(orbCfg):
 @dataclass
 class testDetCfg(orbCfg):
     # test images will naturally have more potential features
-    nfeatures: int = 10000
+    # but object in focus will attract more of them so dont need too much
+    nfeatures: int = 5000
 
 
 @dataclass

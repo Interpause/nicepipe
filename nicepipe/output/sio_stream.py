@@ -58,7 +58,7 @@ log = logging.getLogger(__name__)
 # Good luck with: https://pyav.org/docs/develop/overview/installation.html#build-on-windows
 
 # aiortc.codecs.h264.DEFAULT_BITRATE = aiortc.codecs.vpx.DEFAULT_BITRATE = int(6e6)
-aiortc.codecs.h264.MAX_BITRATE = aiortc.codecs.vpx.MAX_BITRATE = int(50e6)
+aiortc.codecs.h264.MAX_BITRATE = aiortc.codecs.vpx.MAX_BITRATE = int(20e6)
 
 
 class LiveStreamTrack(VideoStreamTrack):
