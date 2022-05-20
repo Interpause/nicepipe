@@ -263,7 +263,7 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
                     track.send_frame(img[0])
                 except:
                     log.warning(e)
-            asyncio.gather(*send_coros, return_exceptions=True)  # TODO: log these maybe
+            await asyncio.gather(*send_coros, return_exceptions=True)  # TODO: log these maybe
             self.fps_callback()
 
     def send(self, img: Tuple[np.ndarray, int], data: dict[str, Any]):
