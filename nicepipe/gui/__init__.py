@@ -96,6 +96,7 @@ def show_camera():
             self.visual_kp = True
             self.visual_tape = True
             self.show_cam = False
+            # self.test_subtractor = cv2.bgsegm.createBackgroundSubtractorGSOC()
 
         async def close(self):
             pass
@@ -114,6 +115,8 @@ def show_camera():
                 initialize(img.shape[1], img.shape[0])
 
             imbuffer[...] = img[..., ::-1] / 255
+            # imbuffer[...] = 0
+            # imbuffer[..., 0] = self.test_subtractor.apply(img) / 255
             h, w = imbuffer.shape[:2]
 
             mp_results = data.get("mp_pose", None)

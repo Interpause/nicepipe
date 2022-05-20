@@ -79,21 +79,24 @@ class kpDetCfg(AnalysisWorkerCfg):
     """scale props to this resolution"""
     ratio_thres: float = 0.6
     """threshold for keypoint to be considered a match"""
+    use_bg_subtraction: bool = True
+    """use background subtraction"""
     debug: bool = False
     """whether to pass data needed for debug"""
     max_fps: int = 30
 
 
-def calc_features(img, detector, descriptor=None, keypoints=None):
+def calc_features(img, detector, descriptor=None, mask=None, keypoints=None):
     """Calculate (keypoints, descriptors, height, width) given an image.
 
     Args:
         detector (Any): Keypoint detector to use.
         img (np.ndarray): BGR image in HWC order as uint8.
+        mask (np.ndarray): bitmask where 1 indicates region of interests.
         keypoints (_type_, optional): Manually specified keypoints to use. Defaults to None.
     """
     assert len(img.shape) == 2, "Image must be grayscale!"
-    kps = keypoints if keypoints else detector.detect(img, None)
+    kps = keypoints if keypoints else detector.detect(img, mask)
     kps, desc = (
         descriptor.compute(img, kps) if descriptor else detector.compute(img, kps)
     )
@@ -112,7 +115,7 @@ def calc_features(img, detector, descriptor=None, keypoints=None):
 # cv2.LMEDS: like voting, needs at least 50% inliers
 
 
-def find_object(matches, query_kp, test_kp, method=cv2.LMEDS, inlier_thres=5.0):
+def find_object(matches, query_kp, test_kp, method=cv2.RHO, inlier_thres=5.0):
     # coordinates in query & test image that match
     query_pts = cv2.KeyPoint_convert(
         query_kp, tuple(m.queryIdx for m in matches)
@@ -150,6 +153,12 @@ class KPDetector(BaseAnalyzer, kpDetCfg):
         self.detector = cv2.ORB_create(**self.test_detector)
         query_detector = cv2.ORB_create(**self.query_detector)
         self.descriptor = cv2.xfeatures2d.BEBLID_create(1.0)
+
+        self.bg_subtractor = (
+            cv2.bgsegm.createBackgroundSubtractorGSOC()
+            if self.use_bg_subtraction
+            else None
+        )
 
         # NOTE: no documentation exists that i cannot figure out what
         # parameters exist or do... values here are hardcoded from tutorial
@@ -196,9 +205,11 @@ class KPDetector(BaseAnalyzer, kpDetCfg):
         # TODO: write keypoint tracker
         # https://docs.opencv.org/4.x/d5/dec/classcv_1_1videostab_1_1KeypointBasedMotionEstimator.html
         # will reduce lag if no need to match every frame
+        # meanshift will also help
         # worst case... one process per query image?
+        mask = self.bg_subtractor.apply(img) if self.use_bg_subtraction else None
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        t_kp, t_desc, _, _ = calc_features(img, self.detector, self.descriptor)
+        t_kp, t_desc, _, _ = calc_features(img, self.detector, self.descriptor, mask)
 
         o = {}
         results = []
@@ -218,6 +229,7 @@ class KPDetector(BaseAnalyzer, kpDetCfg):
                 matched_kp.extend(t_kp[m.trainIdx].pt for m in matches)
             if len(matches) < self.min_matches:
                 continue
+            # print(name, len(matches))  # TODO: log these for calibration reasons
             transform, _ = find_object(matches, q_kp, t_kp)
             box = np.float32(
                 ((0, 0), (0, qh - 1), (qw - 1, qh - 1), (qw - 1, 0))
