@@ -231,6 +231,7 @@ class KPDetector(BaseAnalyzer, kpDetCfg):
                 continue
             # print(name, len(matches))  # TODO: log these for calibration reasons
             transform, _ = find_object(matches, q_kp, t_kp)
+            # tl, bl, br, tr
             box = np.float32(
                 ((0, 0), (0, qh - 1), (qw - 1, qh - 1), (qw - 1, 0))
             ).reshape(-1, 1, 2)
@@ -260,6 +261,7 @@ def create_kp_worker(
         # reshape into smth more palatable (& normalize)
         h, w = out["h"], out["w"]
         res = []
+        # NOTE: box is tl, bl, br, tr
         for (name, box) in out["dets"]:
             norm_box = box.copy()
             norm_box.shape = (-1, 2)
