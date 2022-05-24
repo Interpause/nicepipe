@@ -214,10 +214,11 @@ class KPDetector(BaseAnalyzer, kpDetCfg):
         o = {}
         results = []
         o["dets"] = results
-        o["h"] = img.shape[0]
-        o["w"] = img.shape[1]
         if len(t_kp) == 0:
             return o
+
+        # normalize box coords
+        wh = img.shape[1::-1]
 
         matched_kp = []
         for name, (q_kp, q_desc, qh, qw) in self.features.items():
@@ -233,7 +234,8 @@ class KPDetector(BaseAnalyzer, kpDetCfg):
                 ((0, 0), (0, qh - 1), (qw - 1, qh - 1), (qw - 1, 0))
             ).reshape(-1, 1, 2)
             try:
-                box = cv2.perspectiveTransform(box, transform)
+                box = cv2.perspectiveTransform(box, transform).reshape(-1, 2)
+                box /= wh
                 results.append((name, box))
                 if self.debug:
                     matched_kp.append(
@@ -241,16 +243,16 @@ class KPDetector(BaseAnalyzer, kpDetCfg):
                             name,
                             np.array(
                                 tuple(t_kp[m.trainIdx].pt for m in matches)
-                            ).reshape(-1, 2),
+                            ).reshape(-1, 2)
+                            / wh,
                         )
                     )
 
             except:
                 pass
-        # debug code will only work if img isnt rescaled
         if self.debug:
             o["debug"] = {
-                "all_kp": cv2.KeyPoint_convert(t_kp),
+                "all_kp": cv2.KeyPoint_convert(t_kp) / wh,
                 "matched_kp": matched_kp,
             }
         return o
@@ -265,17 +267,8 @@ def create_kp_worker(
         kwargs = kpDetCfg()
 
     def format_output(out, **_):
-        # reshape into smth more palatable (& normalize)
-        h, w = out["h"], out["w"]
-        res = []
         # NOTE: box is tl, bl, br, tr
-        for (name, box) in out["dets"]:
-            norm_box = box.copy()
-            norm_box.shape = (-1, 2)
-            norm_box[:, 0] /= w
-            norm_box[:, 1] /= h
-            res.append((name, norm_box.tolist()))
-        return res
+        return [(name, box.tolist()) for name, box in out["dets"]]
 
     return AnalysisWorker(
         analyzer=KPDetector(**kwargs),

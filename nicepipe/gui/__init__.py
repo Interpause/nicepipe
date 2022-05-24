@@ -105,6 +105,8 @@ def show_camera():
             self.visual_mp_pose = True
             self.visual_kp = True
             self.visual_tape = True
+            self.width = 360
+            self.height = 480  # will be ignored as aspect ratio is preserved when scaling by width
             self.show_cam = False
             # self.test_subtractor = cv2.bgsegm.createBackgroundSubtractorGSOC()
 
@@ -122,9 +124,10 @@ def show_camera():
                 return
             img = img[0]
             if imbuffer is None:
-                initialize(img.shape[1], img.shape[0])
+                self.height = (self.width * img.shape[0]) // img.shape[1]
+                initialize(self.width, self.height)
 
-            imbuffer[...] = img[..., ::-1] / 255
+            imbuffer[...] = cv2.resize(img[..., ::-1], (self.width, self.height)) / 255
             # imbuffer[...] = 0
             # imbuffer[..., 0] = self.test_subtractor.apply(img) / 255
             h, w = imbuffer.shape[:2]
@@ -141,32 +144,38 @@ def show_camera():
             kp_results = data.get("kp", None)
             if not kp_results is None and self.visual_kp:
                 for (name, box) in kp_results["dets"]:
-                    centre = box.mean(0)[0]
-                    cv2.polylines(imbuffer, [box.astype(np.int32)], True, (0, 0, 1), 2)
+                    centre = box.mean(0) * (w, h)
+                    cv2.polylines(
+                        imbuffer, [(box * (w, h)).astype(np.int32)], True, (0, 0, 1), 1
+                    )
                     cv2.putText(
                         imbuffer,
                         name,
                         centre.astype(np.uint16),
                         cv2.FONT_HERSHEY_SIMPLEX,
-                        0.8,
+                        0.6,
                         (0, 0, 1),
-                        2,
+                        1,
                     )
                 if "debug" in kp_results:
                     debug = kp_results["debug"]
                     all_kp = debug["all_kp"]
-                    draw_keypoints(imbuffer, all_kp, (1, 0, 0))
+                    draw_keypoints(
+                        imbuffer, (all_kp * (w, h)).astype(np.uint16), (1, 0, 0)
+                    )
 
                     match_kps = debug["matched_kp"]
                     for (name, kp) in match_kps:
-                        draw_keypoints(imbuffer, kp, (0, 1, 0), 2)
-                        centre = kp.mean(0)
+                        draw_keypoints(
+                            imbuffer, (kp * (w, h)).astype(np.uint16), (0, 1, 0)
+                        )
+                        centre = kp.mean(0) * (w, h)
                         cv2.putText(
                             imbuffer,
                             str(kp.shape[0]),
                             centre.astype(np.uint16),
                             cv2.FONT_HERSHEY_SIMPLEX,
-                            0.6,
+                            0.4,
                             (0, 1, 0),
                             1,
                         )
