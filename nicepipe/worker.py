@@ -48,11 +48,15 @@ class Worker(WithFPSCallback):
     async def open(self):
         self._is_closing = False
         self._formatters = {n: p.format_output for n, p in self.analyzers.items()}
+        self._visualizers = {n: p.visualize_output for n, p in self.analyzers.items()}
 
         await gather_and_reraise(
             self.source.open(),
             *(p.open() for p in self.analyzers.values()),
-            *(s.open(formatters=self._formatters) for s in self.sinks.values()),
+            *(
+                s.open(formatters=self._formatters, visualizers=self._visualizers)
+                for s in self.sinks.values()
+            ),
         )
         self._task = asyncio.create_task(self._loop())
         log.debug(f"{type(self).__name__} opened!")

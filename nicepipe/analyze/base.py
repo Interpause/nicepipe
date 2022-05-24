@@ -22,7 +22,7 @@ JSONPrimitives = Union[int, str, dict, list, tuple]
 
 
 class CallableWithExtra(Generic[IT, OT], Protocol):
-    """placeholder async function & type for functions that take kwargs"""
+    """placeholder function & type for functions that take kwargs"""
 
     def __call__(self, input: IT, **extra) -> OT:
         return input, extra
@@ -127,6 +127,8 @@ class AnalysisWorker(AnalysisWorkerCfg, WithFPSCallback):
     """Used for output postprocessing in the child process, notably deserializing output."""
     format_output: CallableWithExtra[Any, JSONPrimitives] = field(default=passthrough)
     """Used to ensure output can be JSON serialized at least."""
+    visualize_output: CallableWithExtra[Any, Any] = field(default=passthrough)
+    """Optionally used to visualize output."""
 
     # variables
     current_input: Tuple[Tuple[ndarray, int], dict] = None

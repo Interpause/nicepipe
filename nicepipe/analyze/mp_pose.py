@@ -5,6 +5,8 @@ from dataclasses import dataclass, field
 
 import cv2
 from mediapipe.python.solutions.pose import Pose as MpPose
+import mediapipe.python.solutions.drawing_utils as mp_drawing
+import mediapipe.python.solutions.drawing_styles as mp_drawing_styles
 import mediapipe.framework.formats.landmark_pb2 as landmark_pb2
 import google.protobuf.json_format as pb_json
 
@@ -95,6 +97,16 @@ class MPPosePredictor(BaseAnalyzer):
         return serialized
 
 
+def visualize_output(buffer_and_data):
+    imbuffer, mp_results = buffer_and_data
+    mp_drawing.draw_landmarks(
+        imbuffer,
+        mp_results.pose_landmarks,
+        MpPose.POSE_CONNECTIONS,
+        landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style(),
+    )
+
+
 def create_mp_pose_worker(cfg=mpPoseCfg(), scale_wh=mpPoseWorkerCfg.scale_wh, **kwargs):
     def process_input(img, **extra):
         if scale_wh is None:
@@ -104,6 +116,7 @@ def create_mp_pose_worker(cfg=mpPoseCfg(), scale_wh=mpPoseWorkerCfg.scale_wh, **
     return AnalysisWorker(
         analyzer=MPPosePredictor(cfg),
         process_input=process_input,
+        visualize_output=visualize_output,
         process_output=deserialize_mp_results,
         format_output=prep_send_mp_results,
         **kwargs,

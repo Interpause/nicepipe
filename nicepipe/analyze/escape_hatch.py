@@ -54,6 +54,20 @@ class DuctTapeDetector(BaseAnalyzer, tapeCfg):
                 self.pipe.send(results)
 
 
+def visualize_output(buffer_and_data):
+    imbuffer, tape_results = buffer_and_data
+    h, w = imbuffer.shape[:2]
+    for det in tape_results:
+        x1, y1, x2, y2, conf, cls = det
+        cv2.rectangle(
+            imbuffer,
+            (int(x1 * w), int(y1 * h)),
+            (int(x2 * w), int(y2 * h)),
+            (1, 0, 0),
+            2,
+        )
+
+
 def create_tape_worker(max_fps=tapeCfg.max_fps, lock_fps=tapeCfg.lock_fps, **kwargs):
     if not kwargs:
         kwargs = tapeCfg()

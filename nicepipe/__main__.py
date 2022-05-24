@@ -64,13 +64,12 @@ async def resume_live_display():
 async def loop(cfg: nicepipeCfg):
     from nicepipe import __version__
 
-    live_cfg = {"visual_mp_pose": True, "visual_kp": True, "visual_tape": True, "show_cam": False}
-
-    def _config_toggle(checkbox, value, user_data):
-        live_cfg[user_data] = value
-
     async with setup_gui():
         gui_sink, cam_window = show_camera()
+
+        def _config_toggle(checkbox, value, user_data):
+            gui_sink.visuals_enabled[user_data] = value
+
         dpg.set_primary_window(cam_window, True)
 
         # is only their initial values; good enough for positioning
@@ -80,27 +79,27 @@ async def loop(cfg: nicepipeCfg):
         with dpg.window(label="Settings", tag="config_window", show=False):
             dpg.add_checkbox(
                 label="Show Cam",
-                user_data="show_cam",
+                user_data="_camgui",
                 callback=_config_toggle,
-                default_value=live_cfg["show_cam"]
+                default_value=gui_sink.visuals_enabled.get("_camgui", False),
             )
             dpg.add_checkbox(
                 label="MP Pose Visualization",
-                user_data="visual_mp_pose",
+                user_data="mp_pose",
                 callback=_config_toggle,
-                default_value=live_cfg["visual_mp_pose"],
+                default_value=gui_sink.visuals_enabled.get("mp_pose", False),
             )
             dpg.add_checkbox(
                 label="Keypoint Matcher Visualization",
-                user_data="visual_kp",
+                user_data="kp",
                 callback=_config_toggle,
-                default_value=live_cfg["visual_kp"],
+                default_value=gui_sink.visuals_enabled.get("kp", False),
             )
             dpg.add_checkbox(
                 label="Duct Tape Visualization",
-                user_data="visual_tape",
+                user_data="tape",
                 callback=_config_toggle,
-                default_value=live_cfg["visual_tape"],
+                default_value=gui_sink.visuals_enabled.get("tape", False),
             )
 
         with dpg.window(label="Logs", tag="logs_window", autosize=True, show=False):
@@ -153,7 +152,6 @@ async def loop(cfg: nicepipeCfg):
                 async for _ in RLLoop(5):
                     update_fps_bar()
                     gui_log_handler.update()
-                    gui_sink.config_visuals(live_cfg)
                     if not dpg.is_dearpygui_running():
                         break
                 if cfg.misc.console_live_display:
