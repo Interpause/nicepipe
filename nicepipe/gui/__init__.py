@@ -38,6 +38,16 @@ async def gui_loop(render):
             continue
 
 
+def draw_keypoints(im, kps, color=(1, 0, 0), size=1):
+    kps = kps.astype(np.uint16)
+    a = np.arange(size)
+    m = np.array(np.meshgrid(a, a)).T.reshape(-1, 1, 2)
+    kps = (np.tile(kps, (size**2, 1, 1)) + m).reshape(-1, 2)
+    x_ind = (kps[:, 0] - size // 2).clip(0, im.shape[1] - 1)
+    y_ind = (kps[:, 1] - size // 2).clip(0, im.shape[0] - 1)
+    im[y_ind, x_ind] = color
+
+
 def show_camera():
     imbuffer = None
     """HWC, RGB, float32"""
@@ -131,13 +141,35 @@ def show_camera():
             kp_results = data.get("kp", None)
             if not kp_results is None and self.visual_kp:
                 for (name, box) in kp_results["dets"]:
-                    cv2.polylines(imbuffer, [box.astype(np.int32)], True, (0, 1, 0), 2)
+                    centre = box.mean(0)[0]
+                    cv2.polylines(imbuffer, [box.astype(np.int32)], True, (0, 0, 1), 2)
+                    cv2.putText(
+                        imbuffer,
+                        name,
+                        centre.astype(np.uint16),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.8,
+                        (0, 0, 1),
+                        2,
+                    )
                 if "debug" in kp_results:
                     debug = kp_results["debug"]
-                    all_kp = debug["all_kp"].astype(np.uint16)
-                    match_kp = debug["matched_kp"].astype(np.uint16)
-                    imbuffer[all_kp[:, 1], all_kp[:, 0]] = (1, 0, 0)
-                    imbuffer[match_kp[:, 1], match_kp[:, 0]] = (0, 1, 0)
+                    all_kp = debug["all_kp"]
+                    draw_keypoints(imbuffer, all_kp, (1, 0, 0))
+
+                    match_kps = debug["matched_kp"]
+                    for (name, kp) in match_kps:
+                        draw_keypoints(imbuffer, kp, (0, 1, 0), 2)
+                        centre = kp.mean(0)
+                        cv2.putText(
+                            imbuffer,
+                            str(kp.shape[0]),
+                            centre.astype(np.uint16),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.6,
+                            (0, 1, 0),
+                            1,
+                        )
 
             tape_results = data.get("tape", None)
             if not tape_results is None and self.visual_tape:

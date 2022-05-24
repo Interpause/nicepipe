@@ -225,11 +225,8 @@ class KPDetector(BaseAnalyzer, kpDetCfg):
                 q_desc, t_desc, k=2
             )  # pairs of (best, 2nd best) matches
             matches = filter_matches(pairs, ratio_thres=self.ratio_thres)
-            if self.debug:
-                matched_kp.extend(t_kp[m.trainIdx].pt for m in matches)
             if len(matches) < self.min_matches:
                 continue
-            # print(name, len(matches))  # TODO: log these for calibration reasons
             transform, _ = find_object(matches, q_kp, t_kp)
             # tl, bl, br, tr
             box = np.float32(
@@ -238,13 +235,23 @@ class KPDetector(BaseAnalyzer, kpDetCfg):
             try:
                 box = cv2.perspectiveTransform(box, transform)
                 results.append((name, box))
+                if self.debug:
+                    matched_kp.append(
+                        (
+                            name,
+                            np.array(
+                                tuple(t_kp[m.trainIdx].pt for m in matches)
+                            ).reshape(-1, 2),
+                        )
+                    )
+
             except:
                 pass
         # debug code will only work if img isnt rescaled
         if self.debug:
             o["debug"] = {
                 "all_kp": cv2.KeyPoint_convert(t_kp),
-                "matched_kp": np.array(matched_kp).reshape(-1, 2),
+                "matched_kp": matched_kp,
             }
         return o
 
