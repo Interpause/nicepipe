@@ -115,7 +115,7 @@ def calc_features(img, detector, descriptor=None, mask=None, keypoints=None):
 # cv2.LMEDS: like voting, needs at least 50% inliers
 
 
-def find_object(matches, query_kp, test_kp, method=cv2.RHO, inlier_thres=5.0):
+def find_object(matches, query_kp, test_kp, method=cv2.RANSAC, inlier_thres=5.0):
     # coordinates in query & test image that match
     query_pts = cv2.KeyPoint_convert(
         query_kp, tuple(m.queryIdx for m in matches)
