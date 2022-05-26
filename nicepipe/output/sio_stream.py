@@ -112,7 +112,7 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
             track.stop()
         if chn:
             chn.close()
-        if conn:
+        if conn and conn != "waiting":
             await conn.close()
 
     def on_sub_stream(self, sid):
