@@ -6,15 +6,24 @@ whatever I deemed extraneous
 https://github.com/ultralytics/yolov5/blob/master/utils/general.py
 """
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Optional
+
 import cv2
 import numpy as np
-from nicepipe.analyze.utils import letterbox
 from onnxruntime import InferenceSession
 from pathlib import Path
 
 import nicepipe.models
-from nicepipe.analyze.base import BaseAnalyzer, AnalysisWorker
+from nicepipe.analyze.utils import letterbox
+from nicepipe.analyze.base import AnalysisWorkerCfg, BaseAnalyzer, AnalysisWorker
+
+
+@dataclass
+class yoloV5Cfg(AnalysisWorkerCfg):
+    confidence: float = 0.7  # 0.25
+    nms: float = 0.45  # 0.45
+    class_include: Optional[list[str]] = field(default_factory=lambda: ["person"])
 
 
 def scale_coords(cur_shape, ori_shape, coords, ratio_pad=None):
@@ -143,16 +152,22 @@ def non_max_suppression(
 
 
 @dataclass
-class YoloV5Predictor(BaseAnalyzer):
+class YoloV5Detector(BaseAnalyzer, yoloV5Cfg):
+    model_path: str = str(Path(nicepipe.models.__path__[0]) / "yolov5n6.onnx")
+    onnx_providers: list[str] = field(
+        default_factory=lambda: ["CUDAExecutionProvider", "CPUExecutionProvider"]
+    )
+    imghw: tuple[int, int] = (640, 640)
+
     def init(self):
-        self.session = InferenceSession(
-            str(Path(nicepipe.models.__path__[0]) / "yolov5n6.onnx"),
-            providers=["CUDAExecutionProvider", "CPUExecutionProvider"],
-        )
+        self.session = InferenceSession(self.model_path, providers=self.onnx_providers)
         self.meta = self.session.get_modelmeta().custom_metadata_map
-        self.imghw = (640, 640)
         self.stride = int(self.meta["stride"])
         self.label_map = eval(self.meta["names"])
+
+        self._classes = [
+            self.label_map.index(c) for c in self.class_include if c in self.label_map
+        ]
 
     def cleanup(self):
         pass
@@ -172,7 +187,9 @@ class YoloV5Predictor(BaseAnalyzer):
             0
         ]  # (N, CONCAT, 85)
 
-        dets = non_max_suppression(y)[0]  # [N * (D, 6)] XYXY, CONF, CLS
+        dets = non_max_suppression(y, self.confidence, self.nms, self._classes)[
+            0
+        ]  # [N * (D, 6)] XYXY, CONF, CLS
         dets[:, :4] = scale_coords(self.imghw, img.shape, dets[:, :4])
         dets[:, (0, 2)] /= img.shape[1]
         dets[:, (1, 3)] /= img.shape[0]
@@ -205,9 +222,11 @@ def visualize_outputs(buffer_and_data):
         )
 
 
-def create_yolo_worker(max_fps=30, lock_fps=True, **kwargs):
+def create_yolo_worker(
+    max_fps=yoloV5Cfg.max_fps, lock_fps=yoloV5Cfg.lock_fps, **kwargs
+):
     return AnalysisWorker(
-        analyzer=YoloV5Predictor(),
+        analyzer=YoloV5Detector(**kwargs),
         visualize_output=visualize_outputs,
         max_fps=max_fps,
         lock_fps=lock_fps,

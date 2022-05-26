@@ -158,7 +158,7 @@ cython_debug/
 /config.yml
 # logs folder
 /logs
-# yolov5
-/runs
-/yolov5*.pt
-*.onnx
+
+# models
+/nicepipe/models/*.onnx
+!/nicepipe/models/yolov5n6.onnx

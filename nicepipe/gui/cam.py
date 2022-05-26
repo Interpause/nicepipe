@@ -56,7 +56,7 @@ class GUIStreamer(Sink):
         for _ in RLLoop(self.max_fps):
             if self._is_closing:
                 break
-            if not self.visuals_enabled.get("_camgui", False):
+            if not self.visuals_enabled.get("camgui", False):
                 continue
 
             try:
@@ -81,7 +81,7 @@ class GUIStreamer(Sink):
             self._imbuf[...] = img
 
     def send(self, img, data):
-        if not self.visuals_enabled.get("_camgui", False):
+        if not self.visuals_enabled.get("camgui", False):
             return
 
         if self._imbuf is None:
@@ -96,7 +96,7 @@ class GUIStreamer(Sink):
         self.visualizers = (
             visualizers if isinstance(visualizers, dict) else self.visualizers
         )
-        self.visualizers["_camgui"] = None
+        self.visualizers["camgui"] = None
         self._task = None
 
     async def close(self):
