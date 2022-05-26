@@ -178,6 +178,8 @@ def main(cfg: DictConfig):
                 max(logging.WARNING, cfg.misc.log_level)
             )
             logging.getLogger("aiortc").setLevel(max(logging.INFO, cfg.misc.log_level))
+            # logging.getLogger("aioice.ice").setLevel(logging.DEBUG)
+            # logging.getLogger("aiortc").setLevel(logging.DEBUG)
 
             log.info(
                 f":smiley: hewwo world! :eggplant: JHTech's nicepipe [red]v{__version__}[/red]!",

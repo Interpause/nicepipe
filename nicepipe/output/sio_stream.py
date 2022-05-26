@@ -127,9 +127,9 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
         self.leave_room(sid, self.room_name)
         return 200
 
-    def on_negotiate_channel(self, sid, channel_id):
+    async def on_negotiate_channel(self, sid, channel_id):
         while self._rtc_conns.get(sid, None) == "waiting":
-            asyncio.sleep(0)  # is this bad?
+            await asyncio.sleep(0)  # is this bad?
 
         conn = self._rtc_conns.get(sid, None)
         if not conn:
@@ -190,7 +190,7 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
         # client side workaround was needed due to JSON representation incompatibility
 
         while self._rtc_conns.get(sid, None) == "waiting":
-            asyncio.sleep(0)  # is this bad?
+            await asyncio.sleep(0)  # is this bad?
         conn = self._rtc_conns.get(sid, None)
         if conn:  # conn might not be established yet, or errant client
             await conn.addIceCandidate(RTCIceCandidate(**candidate))
@@ -263,7 +263,9 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
                     track.send_frame(img[0])
                 except:
                     log.warning(e)
-            await asyncio.gather(*send_coros, return_exceptions=True)  # TODO: log these maybe
+            await asyncio.gather(
+                *send_coros, return_exceptions=True
+            )  # TODO: log these maybe
             self.fps_callback()
 
     def send(self, img: Tuple[np.ndarray, int], data: dict[str, Any]):

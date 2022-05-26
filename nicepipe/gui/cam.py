@@ -16,17 +16,17 @@ class GUIStreamer(Sink):
     visualizers: dict = field(default_factory=lambda: {"_camgui": None})
     visuals_enabled: dict = field(default_factory=dict)
     """visualizations enabled"""
-    width: int = 360
-    """buffer is sized by width not height"""
+    size: int = 360
+    """buffer is sized by width"""
     window_tag: int | str = None
     """window to attach to"""
 
     def _resize_gui(self, _, tag):
         window_height = dpg.get_item_height(tag)
         window_width = dpg.get_item_width(tag)
-        scale_factor = min(window_height / self.height, window_width / self.width)
+        scale_factor = min(window_height / self.height, window_width / self.size)
         new_height = self.height * scale_factor
-        new_width = self.width * scale_factor
+        new_width = self.size * scale_factor
         dpg.set_item_height(self._cam_tag, new_height)
         dpg.set_item_width(self._cam_tag, new_width)
         dpg.set_item_pos(
@@ -35,7 +35,7 @@ class GUIStreamer(Sink):
         )
 
     def _init_gui(self, width, height):
-        self.width = width
+        self.size = width
         self.height = height
 
         self._imbuf = np.zeros((height, width, 3), dtype=np.float32)
@@ -71,7 +71,7 @@ class GUIStreamer(Sink):
                 pass
             self._prev_id = img[1]
 
-            img = cv2.resize(img[0][..., ::-1], (self.width, self.height)) / 255
+            img = cv2.resize(img[0][..., ::-1], (self.size, self.height)) / 255
 
             for name, visualizer in self.visualizers.items():
                 data = all_data.get(name, None)
@@ -85,9 +85,7 @@ class GUIStreamer(Sink):
             return
 
         if self._imbuf is None:
-            self._init_gui(
-                self.width, (self.width * img[0].shape[0]) // img[0].shape[1]
-            )
+            self._init_gui(self.size, (self.size * img[0].shape[0]) // img[0].shape[1])
             self._task = asyncio.create_task(asyncio.to_thread(self._loop))
 
         self._cur_data = (img, data)
