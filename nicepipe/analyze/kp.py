@@ -288,7 +288,6 @@ def visualize_output(buffer_and_data):
             cv2.FONT_HERSHEY_SIMPLEX,
             0.3,
             (0, 0, 1),
-            1,
         )
     if "debug" in kp_results:
         debug = kp_results["debug"]
@@ -306,7 +305,6 @@ def visualize_output(buffer_and_data):
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.3,
                 (0, 1, 0),
-                1,
             )
 
 

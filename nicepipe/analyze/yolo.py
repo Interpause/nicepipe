@@ -1,5 +1,12 @@
+"""
+A large portion of below was taken from ultralytics/yolov5
+ofc because yolov5 is their model.
+My main modifications were removing reliance on torch and
+whatever I deemed extraneous
+https://github.com/ultralytics/yolov5/blob/master/utils/general.py
+"""
 from __future__ import annotations
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import cv2
 import numpy as np
 from nicepipe.analyze.utils import letterbox
@@ -8,6 +15,25 @@ from pathlib import Path
 
 import nicepipe.models
 from nicepipe.analyze.base import BaseAnalyzer, AnalysisWorker
+
+
+def scale_coords(cur_shape, ori_shape, coords, ratio_pad=None):
+    # if padding used is known
+    if ratio_pad is None:
+        gain = min(cur_shape[0] / ori_shape[0], cur_shape[1] / ori_shape[1])
+        pad = (cur_shape[1] - ori_shape[1] * gain) / 2, (
+            cur_shape[0] - ori_shape[0] * gain
+        ) / 2
+    else:
+        gain = ratio_pad[0][0]
+        pad = ratio_pad[1]
+
+    coords[:, [0, 2]] -= pad[0]  # x padding
+    coords[:, [1, 3]] -= pad[1]  # y padding
+    coords[:, :4] /= gain
+    coords[:, [0, 2]] = coords[:, [0, 2]].clip(0, ori_shape[1])
+    coords[:, [1, 3]] = coords[:, [1, 3]].clip(0, ori_shape[0])
+    return coords
 
 
 def xywh2xyxy(x):
@@ -115,15 +141,6 @@ def non_max_suppression(
 # meta = session.get_modelmeta().custom_metadata_map
 # most impt is meta['stride'] (for letterboxing correct input shape) and meta['names'] (label map)
 
-# forward
-def forward(self, im):
-    # im is numpy bchw
-    y = self.session.run(
-        [self.session.get_outputs()[0].name], {self.session.get_inputs()[0].name: im}
-    )[0]
-    # y is crazy (n, concat, 85) array
-    # can feed to the NMS
-
 
 @dataclass
 class YoloV5Predictor(BaseAnalyzer):
@@ -141,31 +158,57 @@ class YoloV5Predictor(BaseAnalyzer):
         pass
 
     def analyze(self, img, **_):
+        if 0 in img.shape:
+            return []
         x = np.stack(
             (letterbox(img, new_shape=self.imghw, stride=self.stride, auto=False)[0],),
             0,
-        )  # NHWC, BGR
-        x = x[..., ::-1].transpose(0, 3, 1, 2).astype(np.float32)  # NCHW, RGB
+        )  # NHWC, BGR, float32
+        x = (x / 255)[..., ::-1].transpose(0, 3, 1, 2).astype(np.float32)  # NCHW, RGB
+
         y = self.session.run(
             [self.session.get_outputs()[0].name], {self.session.get_inputs()[0].name: x}
         )[
             0
         ]  # (N, CONCAT, 85)
-        # TODO: use letterbox info to unpad the coords
-        img_preds = non_max_suppression(y)  # [N * (D, 6)] XYXY, CONF, CLS
-        out = []
-        for img in img_preds:
-            img[:, (0, 2)] /= self.imghw[1]
-            img[:, (1, 3)] /= self.imghw[0]
-            preds = img.tolist()
-            for p in preds:
-                p[5] = self.label_map[int(p[5])]
-            out.append(preds)
-        return out
+
+        dets = non_max_suppression(y)[0]  # [N * (D, 6)] XYXY, CONF, CLS
+        dets[:, :4] = scale_coords(self.imghw, img.shape, dets[:, :4])
+        dets[:, (0, 2)] /= img.shape[1]
+        dets[:, (1, 3)] /= img.shape[0]
+        return [
+            (x1, y1, x2, y2, conf, self.label_map[int(cls)])
+            for x1, y1, x2, y2, conf, cls in dets.tolist()
+        ]
 
 
-def create_yolo_worker(cfg=None, **kwargs):
+def visualize_outputs(buffer_and_data):
+    imbuffer, results = buffer_and_data
+    h, w = imbuffer.shape[:2]
+    # print(results)
+    for det in results:
+        x1, y1, x2, y2, conf, cls = det
+        cv2.putText(
+            imbuffer,
+            f"{cls} {conf*100:.1f}%",
+            (int(x1 * w) + 2, int(y1 * h) + 8),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.3,
+            (1, 0, 0),
+        )
+        cv2.rectangle(
+            imbuffer,
+            (int(x1 * w), int(y1 * h)),
+            (int(x2 * w), int(y2 * h)),
+            (1, 0, 0),
+            1,
+        )
+
+
+def create_yolo_worker(max_fps=30, lock_fps=True, **kwargs):
     return AnalysisWorker(
         analyzer=YoloV5Predictor(),
-        **kwargs,
+        visualize_output=visualize_outputs,
+        max_fps=max_fps,
+        lock_fps=lock_fps,
     )

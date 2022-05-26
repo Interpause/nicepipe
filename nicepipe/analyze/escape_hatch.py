@@ -1,8 +1,8 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
-import numpy as np
-# import torch
+
+import torch
 import cv2
 from nicepipe.analyze.base import BaseAnalyzer, AnalysisWorker, AnalysisWorkerCfg
 
@@ -64,7 +64,7 @@ def visualize_output(buffer_and_data):
             (int(x1 * w), int(y1 * h)),
             (int(x2 * w), int(y2 * h)),
             (1, 0, 0),
-            2,
+            1,
         )
 
 
@@ -73,7 +73,10 @@ def create_tape_worker(max_fps=tapeCfg.max_fps, lock_fps=tapeCfg.lock_fps, **kwa
         kwargs = tapeCfg()
 
     return AnalysisWorker(
-        analyzer=DuctTapeDetector(**kwargs), max_fps=max_fps, lock_fps=lock_fps
+        analyzer=DuctTapeDetector(**kwargs),
+        visualize_output=visualize_output,
+        max_fps=max_fps,
+        lock_fps=lock_fps,
     )
 
 
