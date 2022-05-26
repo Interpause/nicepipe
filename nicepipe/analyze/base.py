@@ -2,7 +2,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import deque
-from typing import Any, Generic, Protocol, Tuple, TypeVar, Union
+from typing import Any, Generic, Protocol, TypeVar, Union
 from dataclasses import dataclass, field
 import logging
 
@@ -119,7 +119,7 @@ class AnalysisWorker(AnalysisWorkerCfg, WithFPSCallback):
     """analyzer used"""
 
     # data processing
-    process_input: CallableWithExtra[ndarray, Tuple[ndarray, dict]] = field(
+    process_input: CallableWithExtra[ndarray, tuple[ndarray, dict]] = field(
         default=passthrough_extra
     )
     """Used for input preprocessing on the main thread, notably ensuring input is picklable."""
@@ -131,7 +131,7 @@ class AnalysisWorker(AnalysisWorkerCfg, WithFPSCallback):
     """Optionally used to visualize output."""
 
     # variables
-    current_input: Tuple[Tuple[ndarray, int], dict] = None
+    current_input: tuple[tuple[ndarray, int], dict] = None
     """current input"""
     current_output: Any = None
     """current output"""
@@ -180,7 +180,7 @@ class AnalysisWorker(AnalysisWorkerCfg, WithFPSCallback):
             if not self.is_closing:
                 log.warn(f"{type(self.analyzer).__name__} output pipe closed")
 
-    def __call__(self, img: Tuple[ndarray, int], **extra):
+    def __call__(self, img: tuple[ndarray, int], **extra):
         """returns latest prediction/analysis & scheldules img & extra for the next"""
         self.current_input = (img, extra)
         return self.current_output

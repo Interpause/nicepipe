@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional, Tuple
+from typing import Optional
 from types import SimpleNamespace
 from dataclasses import dataclass, field
 
@@ -34,7 +34,7 @@ class mpPoseCfg:
 @dataclass
 class mpPoseWorkerCfg(AnalysisWorkerCfg):
     cfg: mpPoseCfg = field(default_factory=mpPoseCfg)
-    scale_wh: Optional[Tuple[int, int]] = (640, 360)
+    scale_wh: Optional[tuple[int, int]] = (640, 360)
     max_fps: int = 30
 
 

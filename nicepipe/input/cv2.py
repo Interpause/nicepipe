@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Literal, Tuple
+from typing import Any, Literal
 from dataclasses import dataclass
 from asyncio import create_task, to_thread, sleep
 import logging
@@ -24,7 +24,7 @@ class cv2CapCfg:
     # default cv2 capture source on windows has an unsilenceable warning... but dshow (the alternative) lags..
     api: int = cv2.CAP_ANY
     """cv2.VideoCapture API"""
-    size_wh: Tuple[int, int] = (1280, 720)
+    size_wh: tuple[int, int] = (1280, 720)
     """cv2.VideoCapture resolution in width, height"""
     fps: int = 30
     """cv2.VideoCapture fps"""
@@ -40,7 +40,7 @@ class cv2CapSource(cv2CapCfg, Source):
         return self._cap.isOpened() and not self._is_closing
 
     @property
-    def shape(self) -> Tuple[int, int, Literal[3]]:
+    def shape(self) -> tuple[int, int, Literal[3]]:
         """shape of output in HWC"""
         return (self.size_wh[1], self.size_wh[0], 3)
 

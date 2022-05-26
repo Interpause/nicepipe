@@ -1,7 +1,7 @@
 from __future__ import annotations
 import asyncio
 import logging
-from typing import Any, Tuple
+from typing import Any
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -51,7 +51,7 @@ class WebsocketStreamer(Sink, wsStreamCfg):
         await self._wss.broadcast("frame", {"img": img, "data": out})
         self.fps_callback()
 
-    def send(self, img: Tuple[np.ndarray, int], data: dict[str, Any]):
+    def send(self, img: tuple[np.ndarray, int], data: dict[str, Any]):
         self._cur_data = (img, data)
 
     async def open(self, formatters=None, **_):

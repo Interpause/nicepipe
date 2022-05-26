@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Tuple
+from typing import Any
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
@@ -24,7 +24,7 @@ class Sink(ABC, baseSinkCfg, WithFPSCallback):
     """Abstract class for output sources."""
 
     @abstractmethod
-    def send(img: Tuple[np.ndarray, int], data: dict[str, Any]):
+    def send(img: tuple[np.ndarray, int], data: dict[str, Any]):
         pass
 
     @abstractmethod

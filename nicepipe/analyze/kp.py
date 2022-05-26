@@ -1,6 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Optional, Tuple
+from typing import Optional
 
 import cv2
 import numpy as np
@@ -75,7 +75,7 @@ class kpDetCfg(AnalysisWorkerCfg):
     """min keypoint matches to consider a detection"""
     use_flann: bool = False
     """use flann-based matcher, its supposed to be faster than brute force at large number of features but... experimentally its slower despite turning up nfeatures"""
-    scale_wh: Optional[Tuple[int, int]] = (480, 480)
+    scale_wh: Optional[tuple[int, int]] = (480, 480)
     """scale props to this resolution"""
     ratio_thres: float = 0.6
     """threshold for keypoint to be considered a match"""

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Tuple, Literal
+from typing import Literal
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
@@ -22,11 +22,11 @@ class Source(ABC, WithFPSCallback):
 
     @property
     @abstractmethod
-    def shape(self) -> Tuple[int, int, Literal[3]]:
+    def shape(self) -> tuple[int, int, Literal[3]]:
         return (0, 0, 3)
 
     @abstractmethod
-    async def __anext__(self) -> Tuple[np.ndarray[np.uint8], int]:
+    async def __anext__(self) -> tuple[np.ndarray[np.uint8], int]:
         return self.frame, 0
 
     @abstractmethod

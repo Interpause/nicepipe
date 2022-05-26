@@ -3,7 +3,7 @@ import asyncio
 from collections import deque
 import logging
 import time
-from typing import Any, Tuple
+from typing import Any
 from dataclasses import dataclass, field
 import msgpack
 
@@ -269,7 +269,7 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
             )  # TODO: log these maybe
             self.fps_callback()
 
-    def send(self, img: Tuple[np.ndarray, int], data: dict[str, Any]):
+    def send(self, img: tuple[np.ndarray, int], data: dict[str, Any]):
         self._cur_data = (img, data)
 
     async def open(self, formatters=None, **_):
