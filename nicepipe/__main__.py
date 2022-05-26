@@ -178,7 +178,7 @@ def main(cfg: DictConfig):
                 max(logging.WARNING, cfg.misc.log_level)
             )
             logging.getLogger("aiortc").setLevel(max(logging.INFO, cfg.misc.log_level))
-            # logging.getLogger("aioice.ice").setLevel(logging.DEBUG)
+            logging.getLogger("aioice.ice").setLevel(logging.INFO)
             # logging.getLogger("aiortc").setLevel(logging.DEBUG)
 
             log.info(

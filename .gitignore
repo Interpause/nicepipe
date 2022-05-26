@@ -161,3 +161,4 @@ cython_debug/
 # yolov5
 /runs
 /yolov5*.pt
+*.onnx

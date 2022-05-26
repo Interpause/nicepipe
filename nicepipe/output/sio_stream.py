@@ -7,8 +7,6 @@ from typing import Any, Tuple
 from dataclasses import dataclass, field
 import msgpack
 
-# import json
-
 import numpy as np
 from socketio import AsyncNamespace
 from aiortc import (
@@ -135,13 +133,16 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
         if not conn:
             return 500
 
-        chn = conn.createDataChannel(
-            "analysis",
-            ordered=False,
-            negotiated=True,
-            id=channel_id,
-            maxRetransmits=0,
-        )
+        try:
+            chn = conn.createDataChannel(
+                "analysis",
+                ordered=False,
+                negotiated=True,
+                id=channel_id,
+                maxRetransmits=0,
+            )
+        except Exception as e:
+            return 500
 
         @chn.on("open")
         def on_open():
