@@ -13,7 +13,7 @@ from nicepipe.utils import RLLoop, cancel_and_join
 class GUIStreamer(Sink):
     """output sink for GUI"""
 
-    visualizers: dict = field(default_factory=lambda: {"_camgui": None})
+    visualizers: dict = field(default_factory=dict)
     visuals_enabled: dict = field(default_factory=dict)
     """visualizations enabled"""
     size: int = 360
@@ -96,6 +96,7 @@ class GUIStreamer(Sink):
         self.visualizers = (
             visualizers if isinstance(visualizers, dict) else self.visualizers
         )
+        self.visualizers["_camgui"] = None
         self._task = None
 
     async def close(self):

@@ -4,7 +4,7 @@ from types import SimpleNamespace
 from dataclasses import dataclass, field
 
 import cv2
-from mediapipe.python.solutions.pose import Pose as MpPose
+from mediapipe.python.solutions.pose import Pose as MpPose, POSE_CONNECTIONS
 import mediapipe.python.solutions.drawing_utils as mp_drawing
 import mediapipe.python.solutions.drawing_styles as mp_drawing_styles
 import mediapipe.framework.formats.landmark_pb2 as landmark_pb2
@@ -102,7 +102,7 @@ def visualize_output(buffer_and_data):
     mp_drawing.draw_landmarks(
         imbuffer,
         mp_results.pose_landmarks,
-        MpPose.POSE_CONNECTIONS,
+        POSE_CONNECTIONS,
         landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style(),
     )
 

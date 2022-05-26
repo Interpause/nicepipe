@@ -14,6 +14,7 @@ from rich.prompt import Confirm
 from nicepipe.api import start_api
 from nicepipe.gui.fps_display import show_fps
 from nicepipe.gui.gui_log_handler import create_gui_log_handler
+from nicepipe.gui.visualize_cfg import attach_visualize_cfg
 from nicepipe.input.cv2 import print_cv2_debug
 
 
@@ -67,40 +68,13 @@ async def loop(cfg: nicepipeCfg):
     async with setup_gui():
         gui_sink, cam_window = show_camera()
 
-        def _config_toggle(checkbox, value, user_data):
-            gui_sink.visuals_enabled[user_data] = value
-
         dpg.set_primary_window(cam_window, True)
 
         # is only their initial values; good enough for positioning
         win_height = dpg.get_viewport_client_height()
         win_width = dpg.get_viewport_client_width()
 
-        with dpg.window(label="Settings", tag="config_window", show=False):
-            dpg.add_checkbox(
-                label="Show Cam",
-                user_data="_camgui",
-                callback=_config_toggle,
-                default_value=gui_sink.visuals_enabled.get("_camgui", False),
-            )
-            dpg.add_checkbox(
-                label="MP Pose Visualization",
-                user_data="mp_pose",
-                callback=_config_toggle,
-                default_value=gui_sink.visuals_enabled.get("mp_pose", False),
-            )
-            dpg.add_checkbox(
-                label="Keypoint Matcher Visualization",
-                user_data="kp",
-                callback=_config_toggle,
-                default_value=gui_sink.visuals_enabled.get("kp", False),
-            )
-            dpg.add_checkbox(
-                label="Duct Tape Visualization",
-                user_data="tape",
-                callback=_config_toggle,
-                default_value=gui_sink.visuals_enabled.get("tape", False),
-            )
+        dpg.add_window(label="Settings", tag="config_window", show=False)
 
         with dpg.window(label="Logs", tag="logs_window", autosize=True, show=False):
             gui_log_handler.show()
@@ -146,6 +120,8 @@ async def loop(cfg: nicepipeCfg):
             sio.register_namespace(worker.sinks["sio"])
 
             async with worker:
+                attach_visualize_cfg(gui_sink, "config_window")
+
                 if cfg.misc.console_live_display:
                     resume_task = asyncio.create_task(resume_live_display())
 
