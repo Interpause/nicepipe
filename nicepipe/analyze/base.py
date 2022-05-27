@@ -14,6 +14,11 @@ from multiprocessing.connection import Connection
 from ..utils import cancel_and_join, RLLoop, WithFPSCallback, trim_task_queue
 import nicepipe.utils.uvloop  # use uvloop for child process asyncio loop
 
+import pickle
+from tblib import pickling_support
+
+pickling_support.install()
+
 log = logging.getLogger(__name__)
 
 IT = TypeVar("IT")
@@ -63,7 +68,7 @@ class BaseAnalyzer(ABC):
         except KeyboardInterrupt:
             pass
         except Exception as e:
-            self.pipe.send((1, e))
+            self.pipe.send((1, pickle.dumps(e)))
         finally:
             try:
                 self.cleanup()
@@ -71,7 +76,7 @@ class BaseAnalyzer(ABC):
                 # this error wont make it in time when shutting down cleanly
                 # but cleanup should still get a chance to run before
                 # the process is fully terminated
-                self.pipe.send((1, e))
+                self.pipe.send((1, pickle.dumps(e)))
             finally:
                 self.pipe.close()
 
@@ -84,7 +89,7 @@ class BaseAnalyzer(ABC):
             try:
                 results = (0, await to_thread(self.analyze, img, **extra))
             except Exception as e:
-                results = (1, e)  # pass exception back
+                results = (1, pickle.dumps(e))  # pass exception back
 
             # send & receive concurrently for performance
             # have measured over 1 min averaging period that async is faster
@@ -172,8 +177,13 @@ class AnalysisWorker(AnalysisWorkerCfg, WithFPSCallback):
             while not self.is_closing:
                 err, output = self.pipe.recv()
                 if err:
-                    log.error(f"{type(self.analyzer).__name__} error", exc_info=output)
-                    continue
+                    try:
+                        raise pickle.loads(output)
+                    except Exception as e:
+                        log.error(
+                            f"{type(self.analyzer).__name__} error", exc_info=output
+                        )
+                        continue
                 self.current_output = self.process_output(output)
                 self.fps_callback()
         except (EOFError, BrokenPipeError):
