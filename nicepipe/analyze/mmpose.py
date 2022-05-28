@@ -21,6 +21,11 @@ from nicepipe.analyze.base import AnalysisWorker
 import nicepipe.models
 from nicepipe.analyze.yolo import YoloV5Detector, yoloV5Cfg
 
+# the feels when 50% of the lag is from normalizing the image
+# should normalize the crops instead i guess
+# import pprofile
+# profiler = pprofile.Profile()
+
 # Pipeline steps
 # 1. convert image from BGR to RGB
 # 2. For each bbox (abs_XYWH) calculate abs centre (x,y) & std scale (sx,sy)
@@ -36,7 +41,7 @@ from nicepipe.analyze.yolo import YoloV5Detector, yoloV5Cfg
 #   image_size: model input size/bbox size [192, 256] (w, h)
 #   num_joints: 133 coco whole-body
 
-# try & remove the weird rescale shit after confirming everyt   hing that uses it
+# TODO: should profile this line by line, esp the numpy operations
 
 
 def bbox_xyxy2cs(bbox: np.ndarray, ratio_wh=192 / 256, pad=1.25):
@@ -96,15 +101,10 @@ def remap_keypoints(
     scale: np.ndarray,  # (n, 2)
     heatmap_wh: tuple[int, int],
 ):
-    sx = scale[:, 0] / heatmap_wh[0]
-    sy = scale[:, 1] / heatmap_wh[1]
-
-    corrected = np.ones_like(coords)
-    for n in range(len(sx)):
-        corrected[n, :, 0] = coords[n, :, 0] * sx[n] + center[n, 0] - scale[n, 0] * 0.5
-        corrected[n, :, 1] = coords[n, :, 1] * sy[n] + center[n, 1] - scale[n, 1] * 0.5
-
-    return corrected
+    factor = (scale / heatmap_wh).reshape(-1, 1, 2)
+    center = center.reshape(-1, 1, 2)
+    scale = scale.reshape(-1, 1, 2)
+    return coords * factor + center - scale * 0.5
 
 
 def heatmap2keypoints(heatmaps: np.ndarray, centers: np.ndarray, scales: np.ndarray):
@@ -129,13 +129,6 @@ def heatmap2keypoints(heatmaps: np.ndarray, centers: np.ndarray, scales: np.ndar
     return preds, maxvals
 
 
-# see their config file. idk whose values these are, maybe imagenet's? RGB btw
-def normalize_image(
-    img: np.ndarray, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)
-):
-    return (img / 255 - mean) / std
-
-
 @dataclass
 class mmposeCfg(yoloV5Cfg):
     crop_pad: float = 1.25
@@ -148,6 +141,7 @@ class MMPoseDetector(YoloV5Detector, mmposeCfg):
     pose_model_path: str = str(Path(nicepipe.models.__path__[0]) / "vipnas_res50.onnx")
     input_wh: tuple[int, int] = (192, 256)
     crop_pad: float = 1.25
+    # idk are these imagenet's standardization values?
     mean_rgb: tuple[float, float, float] = (0.485, 0.456, 0.406)
     std_rgb: tuple[float, float, float] = (0.229, 0.224, 0.225)
 
@@ -159,14 +153,18 @@ class MMPoseDetector(YoloV5Detector, mmposeCfg):
         self._ratio_wh = self.input_wh[0] / self.input_wh[1]
         if self.keypoints_include is None:
             self.keypoints_include = slice()
-        self._include_key = tuple(
-            i if isinstance(i, int) else slice(*i) for i in self.keypoints_include
-        )
+        self._include_key = np.r_[
+            tuple(
+                i if isinstance(i, int) else slice(*i) for i in self.keypoints_include
+            )
+        ]
 
     def cleanup(self):
         super().cleanup()
+        # profiler.dump_stats("profile-mmpose.lprof")
 
     def analyze(self, img, **_):
+        # with profiler:
         if 0 in img.shape:
             return []
         dets = self._forward(img)
@@ -174,10 +172,8 @@ class MMPoseDetector(YoloV5Detector, mmposeCfg):
             return []
 
         c, s = bbox_xyxy2cs(dets[:, :4], ratio_wh=self._ratio_wh, pad=self.crop_pad)
-        img = normalize_image(img[..., ::-1], self.mean_rgb, self.std_rgb).astype(
-            np.float32
-        )
-        crops = crop_bbox(img, c, s, self.input_wh)
+        crops = crop_bbox(img, c, s, self.input_wh)  # crop on original image not scaled
+        crops = (crops[..., ::-1] / 255 - self.mean_rgb) / self.std_rgb
         x = crops.transpose(0, 3, 1, 2).astype(np.float32)  # NHWC to NCHW
 
         # (N, keypoints (133 coco wholebody), 64, 48) (64, 48) is heatmap
@@ -185,30 +181,25 @@ class MMPoseDetector(YoloV5Detector, mmposeCfg):
         y = self.pose_session.run(
             [self.pose_session.get_outputs()[0].name],
             {self.pose_session.get_inputs()[0].name: x},
-        )[0]
-
-        y = y[:, self._include_key, ...]
+        )[0][:, self._include_key, ...]
 
         # given same input, ~0 distance from mmpose's version when post_process=None
         # aka its correctly implemented
-        labels = heatmap2keypoints(y, c, s)
+        coords, conf = heatmap2keypoints(y, c, s)
+        # normalize coords
+        ncoords = coords / img.shape[1::-1]
+        # coco wholebody ids
+        ids = (np.arange(conf.size) + 1).reshape(conf.shape)
+        out = np.concatenate((ncoords, conf, ids), axis=2)
 
-        out = []
-        # each label is (kps, confs)
-        for label in zip(*labels):
-            pose = []
-            for i, ((x, y), (conf,)) in enumerate(zip(*label)):
-                pose.append((x / img.shape[1], y / img.shape[0], conf, i + 1))
-            out.append(pose)
-        print(img.shape)
-        return out
+        return out  # (n, kp, (x,y,conf,id))
 
 
 def visualize_outputs(buffer_and_data):
     imbuffer, results = buffer_and_data
     for n, pose in enumerate(results):
         color = hsv_to_rgb(n / len(results), 1, 1)
-        for (x, y, _, i) in pose[:17]:
+        for (x, y, _, i) in pose:
             # print(f"Point {i} at {int(x*imbuffer.shape[1])},{int(y*imbuffer.shape[0])}")
             cv2.circle(
                 imbuffer,
@@ -227,16 +218,3 @@ def create_mmpose_worker(
         max_fps=max_fps,
         lock_fps=lock_fps,
     )
-
-
-if __name__ == "__main__":
-    img = cv2.imread("test/owl_place.webp")
-    bbox = np.array([[329.05188, 131.4513, 1239.4065, 716.73413]], dtype=np.float32)
-    c, s = bbox_xyxy2cs(bbox)
-    crops = crop_bbox(normalize_image(img[..., ::-1]), c, s)
-    x = crops.transpose(0, 3, 1, 2).astype(np.float32)
-
-    print(c, s)
-    crops = crop_bbox(img, c, s)
-    print(crops.shape)
-    cv2.imwrite("croptest.jpg", crops[0])
