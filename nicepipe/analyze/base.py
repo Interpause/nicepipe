@@ -86,6 +86,8 @@ class BaseAnalyzer(ABC):
         # making it have an input & output loop is hence senseless
         while True:
             img, extra = await to_thread(self.pipe.recv)
+            if isinstance(img, str):
+                break
             try:
                 results = (0, await to_thread(self.analyze, img, **extra))
             except Exception as e:
@@ -96,6 +98,7 @@ class BaseAnalyzer(ABC):
             # potential memory leak if not trimmed
             tasks.append(create_task(to_thread(self.pipe.send, results)))
             await trim_task_queue(tasks, 60)
+        raise KeyboardInterrupt
 
 
 @dataclass
@@ -157,6 +160,7 @@ class AnalysisWorker(AnalysisWorkerCfg, WithFPSCallback):
             prev_id = -1
             for _ in RLLoop(self.max_fps):
                 if self.is_closing:
+                    self.pipe.send(("close", {}))
                     break
                 try:
                     img, extra = self.current_input

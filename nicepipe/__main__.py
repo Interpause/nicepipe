@@ -197,5 +197,8 @@ if __name__ == "__main__":
     except Exception as e:
         log.error(e, exc_info=e)
     finally:
-        input("Press enter to continue...")
+        try:
+            input("Press enter to continue...")
+        except:  # poethepoet triggers EOF lmao
+            pass
         sys.exit(0)
