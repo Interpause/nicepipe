@@ -17,14 +17,16 @@ from onnxruntime import InferenceSession
 from pathlib import Path
 
 from nicepipe.analyze.base import AnalysisWorker
+from nicepipe.analyze.naive_tracker import NaiveTracker
 
 import nicepipe.models
 from nicepipe.analyze.yolo import YoloV5Detector, yoloV5Cfg
 
 # the feels when 50% of the lag is from normalizing the image
 # should normalize the crops instead i guess
-# import pprofile
-# profiler = pprofile.Profile()
+import pprofile
+
+profiler = pprofile.Profile()
 
 # Pipeline steps
 # 1. convert image from BGR to RGB
@@ -234,41 +236,45 @@ class MMPoseDetector(YoloV5Detector, mmposeCfg):
                 i if isinstance(i, int) else slice(*i) for i in self.keypoints_include
             )
         ]
+        self._sorter = NaiveTracker()
 
     def cleanup(self):
         super().cleanup()
-        # profiler.dump_stats("profile-mmpose.lprof")
+        profiler.dump_stats("profile-mmpose.lprof")
 
     def analyze(self, img, **_):
-        # with profiler:
-        if 0 in img.shape:
-            return []
-        dets = self._forward(img)
-        if len(dets) == 0:
-            return []
+        with profiler:
+            if 0 in img.shape:
+                return []
+            dets = self._forward(img)
+            if len(dets) == 0:
+                return []
 
-        c, s = bbox_xyxy2cs(dets[:, :4], ratio_wh=self._ratio_wh, pad=self.crop_pad)
-        crops = crop_bbox(img, c, s, self.input_wh)  # crop on original image not scaled
-        crops = (crops[..., ::-1] / 255 - self.mean_rgb) / self.std_rgb
-        x = crops.transpose(0, 3, 1, 2).astype(np.float32)  # NHWC to NCHW
+            c, s = bbox_xyxy2cs(dets[:, :4], ratio_wh=self._ratio_wh, pad=self.crop_pad)
+            crops = crop_bbox(
+                img, c, s, self.input_wh
+            )  # crop on original image not scaled
+            crops = (crops[..., ::-1] / 255 - self.mean_rgb) / self.std_rgb
+            x = crops.transpose(0, 3, 1, 2).astype(np.float32)  # NHWC to NCHW
 
-        # (N, keypoints (133 coco wholebody), 64, 48) (64, 48) is heatmap
-        # get output #0
-        y = self.pose_session.run(
-            [self.pose_session.get_outputs()[0].name],
-            {self.pose_session.get_inputs()[0].name: x},
-        )[0][:, self._include_key, ...]
+            # (N, keypoints (133 coco wholebody), 64, 48) (64, 48) is heatmap
+            # get output #0
+            y = self.pose_session.run(
+                [self.pose_session.get_outputs()[0].name],
+                {self.pose_session.get_inputs()[0].name: x},
+            )[0][:, self._include_key, ...]
 
-        # given same input, ~0 distance from mmpose's version when post_process=None
-        # aka its correctly implemented
-        coords, conf = heatmap2keypoints(y, c, s)
-        # normalize coords
-        ncoords = coords / img.shape[1::-1]
-        # coco wholebody ids
-        ids = (np.arange(conf.size) + 1).reshape(conf.shape)
-        out = np.concatenate((ncoords, conf, ids), axis=2)
+            # given same input, ~0 distance from mmpose's version when post_process=None
+            # aka its correctly implemented
+            coords, conf = heatmap2keypoints(y, c, s)
+            # normalize coords
+            ncoords = coords / img.shape[1::-1]
+            # coco wholebody ids
+            ids = (np.arange(conf.size) + 1).reshape(conf.shape)
+            out = np.concatenate((ncoords, conf, ids), axis=2)
 
-        return out  # (n, kp, (x,y,conf,id))
+            sort_inds = self._sorter.sort(coords[:, :17])
+            return out[sort_inds]  # (n, kp, (x,y,conf,id))
 
 
 def coco_wholebody2mp_pose(keypoint):
