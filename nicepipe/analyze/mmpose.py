@@ -41,8 +41,6 @@ from nicepipe.analyze.yolo import YoloV5Detector, yoloV5Cfg
 #   image_size: model input size/bbox size [192, 256] (w, h)
 #   num_joints: 133 coco whole-body
 
-# TODO: should profile this line by line, esp the numpy operations
-
 
 def bbox_xyxy2cs(bbox: np.ndarray, ratio_wh=192 / 256, pad=1.25):
     """Converts abs bbox N*(x,y,x,y) to abs centre N*(x,y) & abs scale N*(sx,sy)"""
@@ -95,6 +93,85 @@ def crop_bbox(
     return crops
 
 
+# yanked straight from mmpose. my brain too puny to vectorize this.
+def taylor(heatmap, coord):
+    """Distribution aware coordinate decoding method.
+
+    Note:
+        - heatmap height: H
+        - heatmap width: W
+
+    Args:
+        heatmap (np.ndarray[H, W]): Heatmap of a particular joint type.
+        coord (np.ndarray[2,]): Coordinates of the predicted keypoints.
+
+    Returns:
+        np.ndarray[2,]: Updated coordinates.
+    """
+    H, W = heatmap.shape[:2]
+    px, py = int(coord[0]), int(coord[1])
+    if 1 < px < W - 2 and 1 < py < H - 2:
+        dx = 0.5 * (heatmap[py][px + 1] - heatmap[py][px - 1])
+        dy = 0.5 * (heatmap[py + 1][px] - heatmap[py - 1][px])
+        dxx = 0.25 * (heatmap[py][px + 2] - 2 * heatmap[py][px] + heatmap[py][px - 2])
+        dxy = 0.25 * (
+            heatmap[py + 1][px + 1]
+            - heatmap[py - 1][px + 1]
+            - heatmap[py + 1][px - 1]
+            + heatmap[py - 1][px - 1]
+        )
+        dyy = 0.25 * (
+            heatmap[py + 2 * 1][px] - 2 * heatmap[py][px] + heatmap[py - 2 * 1][px]
+        )
+        derivative = np.array([[dx], [dy]])
+        hessian = np.array([[dxx, dxy], [dxy, dyy]])
+        if dxx * dyy - dxy**2 != 0:
+            hessianinv = np.linalg.inv(hessian)
+            offset = -hessianinv @ derivative
+            offset = np.squeeze(np.array(offset.T), axis=0)
+            coord += offset
+    return coord
+
+
+# yanked straight from mmpose, vectorizing this is too hard for my puny brain esp cause cv2 is used
+def gaussian_blur(heatmaps, kernel=11):
+    """Modulate heatmap distribution with Gaussian.
+     sigma = 0.3*((kernel_size-1)*0.5-1)+0.8
+     sigma~=3 if k=17
+     sigma=2 if k=11;
+     sigma~=1.5 if k=7;
+     sigma~=1 if k=3;
+
+    Note:
+        - batch_size: N
+        - num_keypoints: K
+        - heatmap height: H
+        - heatmap width: W
+
+    Args:
+        heatmaps (np.ndarray[N, K, H, W]): model predicted heatmaps.
+        kernel (int): Gaussian kernel size (K) for modulation, which should
+            match the heatmap gaussian sigma when training.
+            K=17 for sigma=3 and k=11 for sigma=2.
+
+    Returns:
+        np.ndarray ([N, K, H, W]): Modulated heatmap distribution.
+    """
+    assert kernel % 2 == 1
+
+    border = (kernel - 1) // 2
+    batch_size, num_joints, height, width = heatmaps.shape
+    for i in range(batch_size):
+        for j in range(num_joints):
+            origin_max = np.max(heatmaps[i, j])
+            dr = np.zeros((height + 2 * border, width + 2 * border), dtype=np.float32)
+            dr[border:-border, border:-border] = heatmaps[i, j].copy()
+            dr = cv2.GaussianBlur(dr, (kernel, kernel), 0)
+            heatmaps[i, j] = dr[border:-border, border:-border].copy()
+            heatmaps[i, j] *= origin_max / np.max(heatmaps[i, j])
+    return heatmaps
+
+
 def remap_keypoints(
     coords: np.ndarray,  # (n, keypoints, 2)
     center: np.ndarray,  # (n, 2)
@@ -115,18 +192,17 @@ def heatmap2keypoints(heatmaps: np.ndarray, centers: np.ndarray, scales: np.ndar
     ind = np.argmax(tmp1, 2).reshape((n, k, 1))
     maxvals = np.amax(tmp1, 2).reshape((n, k, 1))
 
-    # TODO: there is a good reason they do post-processing
-    # your coordinates look more like grid points without it
-    # using the heatmap to calculate "inbetweens" is apparently
-    # a post-processing step
-
     preds = np.tile(ind, (1, 1, 2)).astype(np.float32)
     preds[..., 0] = preds[..., 0] % w
     preds[..., 1] = preds[..., 1] // w
     preds = np.where(np.tile(maxvals, (1, 1, 2)) > 0.0, preds, -1)
-    preds = remap_keypoints(preds, centers, scales, (w, h))
 
-    return preds, maxvals
+    heatmaps = np.log(np.maximum(gaussian_blur(heatmaps, 11), 1e-10))
+    for i in range(n):
+        for j in range(k):
+            preds[i][j] = taylor(heatmaps[i][j], preds[i][j])
+
+    return remap_keypoints(preds, centers, scales, (w, h)), maxvals
 
 
 @dataclass
@@ -152,7 +228,7 @@ class MMPoseDetector(YoloV5Detector, mmposeCfg):
         )
         self._ratio_wh = self.input_wh[0] / self.input_wh[1]
         if self.keypoints_include is None:
-            self.keypoints_include = slice()
+            self.keypoints_include = ((133,),)
         self._include_key = np.r_[
             tuple(
                 i if isinstance(i, int) else slice(*i) for i in self.keypoints_include
@@ -195,17 +271,20 @@ class MMPoseDetector(YoloV5Detector, mmposeCfg):
         return out  # (n, kp, (x,y,conf,id))
 
 
-def visualize_outputs(buffer_and_data):
+def visualize_outputs(buffer_and_data, confidence_thres=0.5):
     imbuffer, results = buffer_and_data
     for n, pose in enumerate(results):
         color = hsv_to_rgb(n / len(results), 1, 1)
-        for (x, y, _, i) in pose:
+        for (x, y, c, i) in pose:
+            if c < confidence_thres:
+                continue
             # print(f"Point {i} at {int(x*imbuffer.shape[1])},{int(y*imbuffer.shape[0])}")
             cv2.circle(
                 imbuffer,
                 (int(x * imbuffer.shape[1]), int(y * imbuffer.shape[0])),
-                2,
+                1,
                 color,
+                cv2.FILLED,
             )
 
 
