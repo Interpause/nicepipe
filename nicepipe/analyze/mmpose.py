@@ -24,9 +24,10 @@ from nicepipe.analyze.yolo import YoloV5Detector, yoloV5Cfg
 
 # the feels when 50% of the lag is from normalizing the image
 # should normalize the crops instead i guess
-import pprofile
-
-profiler = pprofile.Profile()
+# TODO: figure out to how optimize or parallelize the taylor (70%) and guassian (20%) parts
+# seriously post-processing shouldnt take more time than the model inference...
+# import pprofile
+# profiler = pprofile.Profile()
 
 # Pipeline steps
 # 1. convert image from BGR to RGB
@@ -42,6 +43,15 @@ profiler = pprofile.Profile()
 # ann_info:
 #   image_size: model input size/bbox size [192, 256] (w, h)
 #   num_joints: 133 coco whole-body
+
+# fmt: off
+coco2mp_map = (
+    0, 65, 1, 68, 62, 2, 59, 3, 4, 77,
+    71, 5, 6,  7,  8, 9, 10, 110, 131,
+    98, 119,  94, 115, 11, 12, 13, 14,
+    15, 16, 19, 22, 17, 20,
+)
+# fmt: on
 
 
 def bbox_xyxy2cs(bbox: np.ndarray, ratio_wh=192 / 256, pad=1.25):
@@ -204,6 +214,9 @@ def heatmap2keypoints(heatmaps: np.ndarray, centers: np.ndarray, scales: np.ndar
         for j in range(k):
             preds[i][j] = taylor(heatmaps[i][j], preds[i][j])
 
+    # mask = 1 < preds[:, :, 0] < w - 1 & 1 < preds[:, :, 1] < h - 1
+    # diff = np.array(tuple(heatmaps))
+
     return remap_keypoints(preds, centers, scales, (w, h)), maxvals
 
 
@@ -230,7 +243,7 @@ class MMPoseDetector(YoloV5Detector, mmposeCfg):
         )
         self._ratio_wh = self.input_wh[0] / self.input_wh[1]
         if self.keypoints_include is None:
-            self.keypoints_include = ((133,),)
+            self.keypoints_include = coco2mp_map
         self._include_key = np.r_[
             tuple(
                 i if isinstance(i, int) else slice(*i) for i in self.keypoints_include
@@ -240,75 +253,60 @@ class MMPoseDetector(YoloV5Detector, mmposeCfg):
 
     def cleanup(self):
         super().cleanup()
-        profiler.dump_stats("profile-mmpose.lprof")
+        # profiler.dump_stats("profile-mmpose.lprof")
 
     def analyze(self, img, **_):
-        with profiler:
-            if 0 in img.shape:
-                return []
-            dets = self._forward(img)
-            if len(dets) == 0:
-                return []
+        # with profiler:
+        if 0 in img.shape:
+            return []
+        dets = self._forward(img)
+        if len(dets) == 0:
+            return []
 
-            c, s = bbox_xyxy2cs(dets[:, :4], ratio_wh=self._ratio_wh, pad=self.crop_pad)
-            crops = crop_bbox(
-                img, c, s, self.input_wh
-            )  # crop on original image not scaled
-            crops = (crops[..., ::-1] / 255 - self.mean_rgb) / self.std_rgb
-            x = crops.transpose(0, 3, 1, 2).astype(np.float32)  # NHWC to NCHW
+        c, s = bbox_xyxy2cs(dets[:, :4], ratio_wh=self._ratio_wh, pad=self.crop_pad)
+        crops = crop_bbox(img, c, s, self.input_wh)  # crop on original image not scaled
+        crops = (crops[..., ::-1] / 255 - self.mean_rgb) / self.std_rgb
+        x = crops.transpose(0, 3, 1, 2).astype(np.float32)  # NHWC to NCHW
 
-            # (N, keypoints (133 coco wholebody), 64, 48) (64, 48) is heatmap
-            # get output #0
-            y = self.pose_session.run(
-                [self.pose_session.get_outputs()[0].name],
-                {self.pose_session.get_inputs()[0].name: x},
-            )[0][:, self._include_key, ...]
+        # (N, keypoints (133 coco wholebody), 64, 48) (64, 48) is heatmap
+        # get output #0
+        y = self.pose_session.run(
+            [self.pose_session.get_outputs()[0].name],
+            {self.pose_session.get_inputs()[0].name: x},
+        )[0][:, self._include_key, ...]
 
-            # given same input, ~0 distance from mmpose's version when post_process=None
-            # aka its correctly implemented
-            coords, conf = heatmap2keypoints(y, c, s)
-            # normalize coords
-            ncoords = coords / img.shape[1::-1]
-            # coco wholebody ids
-            ids = (np.arange(conf.size) + 1).reshape(conf.shape)
-            out = np.concatenate((ncoords, conf, ids), axis=2)
+        # given same input, ~0 distance from mmpose's version when post_process=None
+        # aka its correctly implemented
+        coords, conf = heatmap2keypoints(y, c, s)
+        # normalize coords
+        ncoords = coords / img.shape[1::-1]
+        # coco wholebody ids
+        ids = (np.arange(conf.size) + 1).reshape(conf.shape)
+        out = np.concatenate((ncoords, conf, ids), axis=2)
 
-            sort_inds = self._sorter.sort(coords[:, :17])
-            return out[sort_inds]  # (n, kp, (x,y,conf,id))
-
-
-def coco_wholebody2mp_pose(keypoint):
-    """expects (x,y,conf,id) (uses only x,y,conf)"""
-    return dict(x=keypoint[0], y=keypoint[1], z=0.0, visibility=keypoint[2])
+        sort_inds = self._sorter.sort(coords[:, :13])
+        return out[sort_inds]  # (n, kp, (x,y,conf,id))
 
 
 # coco keypoints start from 1 rather than 0
 # but their location inside the array is ofc from 0
 # hence all coco ids are decremented by 1 below
-# fmt: off
-coco2mp_map = (
-    0, 65, 1, 68, 62, 2, 59, 3, 4, 77,
-    71, 5, 6,  7,  8, 9, 10, 110, 131,
-    98, 119,  94, 115, 11, 12, 13, 14,
-    15, 16, 19, 22, 17, 20,
-)
-# fmt: on
+
 # TODO: output_formatter for the plain results
-def format_as_mp_pose(out, **_):
-    return {
-        i: tuple(coco_wholebody2mp_pose(pose[n]) for n in coco2mp_map)
-        for i, pose in enumerate(out)
-    }
-
-
-def coco_wholebody2mp_pose_compressed(kp):
+def coco_wholebody2mp_pose(kp):
     # drop precision to compress
     return (int(kp[0] * 255), int(kp[1] * 255), 0, int(kp[2] * 255))
 
 
-def format_as_mp_pose_compressed(out, **_):
+def format_as_mp_pose(out, **_):
+    # user has manually selected coco_keypoints via keypoints_include
+    if len(next(iter(out), [])) == 33:
+        return {
+            i: tuple(coco_wholebody2mp_pose(kp) for kp in pose)
+            for i, pose in enumerate(out)
+        }
     return {
-        i: tuple(coco_wholebody2mp_pose_compressed(pose[n]) for n in coco2mp_map)
+        i: tuple(coco_wholebody2mp_pose(pose[n]) for n in coco2mp_map)
         for i, pose in enumerate(out)
     }
 
@@ -336,7 +334,7 @@ def create_mmpose_worker(
     return AnalysisWorker(
         analyzer=MMPoseDetector(**kwargs),
         visualize_output=visualize_outputs,
-        format_output=format_as_mp_pose_compressed,
+        format_output=format_as_mp_pose,
         max_fps=max_fps,
         lock_fps=lock_fps,
     )
