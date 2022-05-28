@@ -193,6 +193,7 @@ if __name__ == "__main__":
     # stacktrace for omegaconf errors is useless
     except OmegaConfBaseException as e:
         log.error(e)
+        print(e)
     except Exception as e:
         log.error(e, exc_info=e)
     finally:

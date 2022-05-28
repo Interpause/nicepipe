@@ -264,7 +264,7 @@ def format_output(out, **_):
 
 
 def draw_keypoints(im, kps, color=(1, 0, 0), size=1):
-    kps = kps.astype(np.uint16)
+    kps = kps.astype(int)
     a = np.arange(size)
     m = np.array(np.meshgrid(a, a)).T.reshape(-1, 1, 2)
     kps = (np.tile(kps, (size**2, 1, 1)) + m).reshape(-1, 2)
@@ -284,7 +284,7 @@ def visualize_output(buffer_and_data):
         cv2.putText(
             imbuffer,
             name,
-            centre.astype(np.uint16),
+            centre.astype(int),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.3,
             (0, 0, 1),
@@ -292,16 +292,16 @@ def visualize_output(buffer_and_data):
     if "debug" in kp_results:
         debug = kp_results["debug"]
         all_kp = debug["all_kp"]
-        draw_keypoints(imbuffer, (all_kp * wh).astype(np.uint16), (1, 0, 0))
+        draw_keypoints(imbuffer, (all_kp * wh).astype(int), (1, 0, 0))
         match_kps = debug["matched_kp"]
         for (name, kp) in match_kps:
             kp = kp * wh
-            draw_keypoints(imbuffer, kp.astype(np.uint16), (0, 1, 0))
+            draw_keypoints(imbuffer, kp.astype(int), (0, 1, 0))
             centre = kp.mean(0)
             cv2.putText(
                 imbuffer,
                 str(kp.shape[0]),
-                centre.astype(np.uint16),
+                centre.astype(int),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.3,
                 (0, 1, 0),

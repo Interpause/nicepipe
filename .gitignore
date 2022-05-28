@@ -162,3 +162,4 @@ cython_debug/
 # models
 /nicepipe/models/*.onnx
 !/nicepipe/models/yolov5n6.onnx
+!/nicepipe/models/vipnas_res50.onnx

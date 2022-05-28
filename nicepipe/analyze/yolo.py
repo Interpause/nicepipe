@@ -11,19 +11,13 @@ from typing import Optional
 
 import cv2
 import numpy as np
+
 from onnxruntime import InferenceSession
 from pathlib import Path
 
 import nicepipe.models
 from nicepipe.analyze.utils import letterbox
 from nicepipe.analyze.base import AnalysisWorkerCfg, BaseAnalyzer, AnalysisWorker
-
-
-@dataclass
-class yoloV5Cfg(AnalysisWorkerCfg):
-    confidence: float = 0.7  # 0.25
-    nms: float = 0.45  # 0.45
-    class_include: Optional[list[str]] = field(default_factory=lambda: ["person"])
 
 
 def scale_coords(cur_shape, ori_shape, coords, ratio_pad=None):
@@ -152,6 +146,13 @@ def non_max_suppression(
 
 
 @dataclass
+class yoloV5Cfg(AnalysisWorkerCfg):
+    confidence: float = 0.7  # 0.25
+    nms: float = 0.45  # 0.45
+    class_include: Optional[list[str]] = field(default_factory=lambda: ["person"])
+
+
+@dataclass
 class YoloV5Detector(BaseAnalyzer, yoloV5Cfg):
     model_path: str = str(Path(nicepipe.models.__path__[0]) / "yolov5n6.onnx")
     onnx_providers: list[str] = field(
@@ -172,9 +173,7 @@ class YoloV5Detector(BaseAnalyzer, yoloV5Cfg):
     def cleanup(self):
         pass
 
-    def analyze(self, img, **_):
-        if 0 in img.shape:
-            return []
+    def _forward(self, img):
         x = np.stack(
             (letterbox(img, new_shape=self.imghw, stride=self.stride, auto=False)[0],),
             0,
@@ -185,12 +184,18 @@ class YoloV5Detector(BaseAnalyzer, yoloV5Cfg):
             [self.session.get_outputs()[0].name], {self.session.get_inputs()[0].name: x}
         )[
             0
-        ]  # (N, CONCAT, 85)
+        ]  # output #0: (N, CONCAT, 85)
 
         dets = non_max_suppression(y, self.confidence, self.nms, self._classes)[
             0
-        ]  # [N * (D, 6)] XYXY, CONF, CLS
+        ]  # [N * (D, 6)] XYXY, CONF, CLS; get only 0th image given batchsize=1
         dets[:, :4] = scale_coords(self.imghw, img.shape, dets[:, :4])
+        return dets
+
+    def analyze(self, img, **_):
+        if 0 in img.shape:
+            return []
+        dets = self._forward(img)
         dets[:, (0, 2)] /= img.shape[1]
         dets[:, (1, 3)] /= img.shape[0]
         return [
