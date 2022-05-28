@@ -208,7 +208,7 @@ def heatmap2keypoints(heatmaps: np.ndarray, centers: np.ndarray, scales: np.ndar
 @dataclass
 class mmposeCfg(yoloV5Cfg):
     crop_pad: float = 1.25
-    keypoints_include: Optional[list[Any]] = field(default_factory=lambda: [(17,)])
+    keypoints_include: Optional[list[Any]] = field(default_factory=lambda: [(0, 133)])
     """list of tuples or int indexes. tuples are converted to slices to index. there are 133 keypoints in coco wholebody."""
 
 
@@ -271,6 +271,42 @@ class MMPoseDetector(YoloV5Detector, mmposeCfg):
         return out  # (n, kp, (x,y,conf,id))
 
 
+def coco_wholebody2mp_pose(keypoint):
+    """expects (x,y,conf,id) (uses only x,y,conf)"""
+    return dict(x=keypoint[0], y=keypoint[1], z=0.0, visibility=keypoint[2])
+
+
+# coco keypoints start from 1 rather than 0
+# but their location inside the array is ofc from 0
+# hence all coco ids are decremented by 1 below
+# fmt: off
+coco2mp_map = (
+    0, 65, 1, 68, 62, 2, 59, 3, 4, 77,
+    71, 5, 6,  7,  8, 9, 10, 110, 131,
+    98, 119,  94, 115, 11, 12, 13, 14,
+    15, 16, 19, 22, 17, 20,
+)
+# fmt: on
+# TODO: output_formatter for the plain results
+def format_as_mp_pose(out, **_):
+    return {
+        i: tuple(coco_wholebody2mp_pose(pose[n]) for n in coco2mp_map)
+        for i, pose in enumerate(out)
+    }
+
+
+def coco_wholebody2mp_pose_compressed(kp):
+    # drop precision to compress
+    return (int(kp[0] * 255), int(kp[1] * 255), 0, int(kp[2] * 255))
+
+
+def format_as_mp_pose_compressed(out, **_):
+    return {
+        i: tuple(coco_wholebody2mp_pose_compressed(pose[n]) for n in coco2mp_map)
+        for i, pose in enumerate(out)
+    }
+
+
 def visualize_outputs(buffer_and_data, confidence_thres=0.5):
     imbuffer, results = buffer_and_data
     for n, pose in enumerate(results):
@@ -294,6 +330,7 @@ def create_mmpose_worker(
     return AnalysisWorker(
         analyzer=MMPoseDetector(**kwargs),
         visualize_output=visualize_outputs,
+        format_output=format_as_mp_pose_compressed,
         max_fps=max_fps,
         lock_fps=lock_fps,
     )
