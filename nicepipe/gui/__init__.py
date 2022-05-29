@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from contextlib import asynccontextmanager, contextmanager
+from contextlib import asynccontextmanager, contextmanager, ExitStack
 
 import dearpygui.dearpygui as dpg
 from nicepipe.gui.cam import GUIStreamer
@@ -61,12 +61,13 @@ def show_all_dpg_tools():
 
 @asynccontextmanager
 async def setup_gui():
-    with create_gui() as render:
-        with dpg.theme() as global_theme:
-            with dpg.theme_component(dpg.mvAll):
-                dpg.add_theme_style(
-                    dpg.mvStyleVar_WindowPadding, 0, category=dpg.mvThemeCat_Core
-                )
+    with ExitStack() as stack:
+        render = stack.enter_context(create_gui())
+        global_theme = stack.enter_context(dpg.theme())
+        with dpg.theme_component(dpg.mvAll):
+            dpg.add_theme_style(
+                dpg.mvStyleVar_WindowPadding, 0, category=dpg.mvThemeCat_Core
+            )
 
         dpg.bind_theme(global_theme)
 

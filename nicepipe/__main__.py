@@ -13,6 +13,7 @@ import sys
 import os
 import logging
 import asyncio
+from contextlib import ExitStack
 
 
 from omegaconf import OmegaConf, DictConfig
@@ -192,11 +193,10 @@ def main(cfg: DictConfig):
 if __name__ == "__main__":
     try:
         cfg = get_config()
-        if cfg.misc.save_logs:
-            with change_cwd():
+        with ExitStack() as stack:
+            if cfg.misc.save_logs:
+                stack.enter_context(change_cwd())
                 OmegaConf.save(cfg, "config.yml")
-                main(cfg)
-        else:
             main(cfg)
     except KeyboardInterrupt:
         pass
