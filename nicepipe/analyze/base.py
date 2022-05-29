@@ -7,14 +7,14 @@ from dataclasses import dataclass, field
 import logging
 
 from numpy import ndarray
-from asyncio import Task, run as async_run, create_task, to_thread
+from asyncio import Task, run as async_run, create_task, sleep, to_thread
 from multiprocessing import Pipe, Process
 from multiprocessing.connection import Connection
 
 from ..utils import (
     RLLoop,
     WithFPSCallback,
-    gather_and_reraise,
+    cancel_and_join,
     trim_task_queue,
 )
 import nicepipe.utils.uvloop  # use uvloop for child process asyncio loop
@@ -236,11 +236,18 @@ class AnalysisWorker(AnalysisWorkerCfg, WithFPSCallback):
     async def close(self):
         self.is_closing = True
         log.debug(f"{type(self.analyzer).__name__} worker closing...")
+
+        # give on esecond for loops to exit naturally
+        await sleep(1)
         try:
-            await gather_and_reraise(*self.loop_tasks)
+            await cancel_and_join(*self.loop_tasks)
         except Exception as e:
             log.error(f"{type(self.analyzer).__name__} error during close", exc_info=e)
-        # self.process.terminate()
+
+        # give one second for process to terminate naturally before forcing it
+        await sleep(1)
+        self.process.terminate()
+
         await to_thread(self.process.join)
         log.debug(f"{type(self.analyzer).__name__} worked closed!")
 
