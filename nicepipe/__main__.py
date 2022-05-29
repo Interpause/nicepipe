@@ -1,6 +1,8 @@
 from __future__ import annotations
 import nicepipe.utils.uvloop
 
+# import nicepipe.utils.cython_hack
+
 import sys
 import os
 import logging
@@ -19,7 +21,8 @@ from nicepipe.api import start_api
 from nicepipe.gui.fps_display import show_fps
 from nicepipe.gui.gui_log_handler import create_gui_log_handler
 from nicepipe.gui.visualize_cfg import attach_visualize_cfg
-from nicepipe.input.cv2 import print_cv2_debug
+
+# from nicepipe.input.cv2 import print_cv2_debug
 
 
 from nicepipe.cfg import get_config, nicepipeCfg

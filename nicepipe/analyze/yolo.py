@@ -20,7 +20,7 @@ from nicepipe.analyze.utils import letterbox
 from nicepipe.analyze.base import AnalysisWorkerCfg, BaseAnalyzer, AnalysisWorker
 
 # import last to avoid compiling others, which could cause issues
-import nicepipe.utils.cython_hack
+# import nicepipe.utils.cython_hack
 
 
 def scale_coords(cur_shape, ori_shape, coords, ratio_pad=None):

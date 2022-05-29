@@ -23,7 +23,7 @@ import nicepipe.models
 from nicepipe.analyze.yolo import YoloV5Detector, yoloV5Cfg
 
 # import last to avoid compiling others, which could cause issues
-import nicepipe.utils.cython_hack
+# import nicepipe.utils.cython_hack
 
 # the feels when 50% of the lag is from normalizing the image
 # should normalize the crops instead i guess

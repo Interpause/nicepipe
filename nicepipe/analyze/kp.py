@@ -10,7 +10,7 @@ from nicepipe.analyze.utils import letterbox
 from nicepipe.utils.logging import ORIGINAL_CWD
 
 # import last to avoid compiling others, which could cause issues
-import nicepipe.utils.cython_hack
+# import nicepipe.utils.cython_hack
 
 # derived from https://docs.opencv.org/4.x/dc/dc3/tutorial_py_matcher.html
 
