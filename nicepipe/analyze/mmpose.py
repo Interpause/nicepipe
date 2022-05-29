@@ -26,8 +26,6 @@ from nicepipe.analyze.yolo import YoloV5Detector, yoloV5Cfg
 # should normalize the crops instead i guess
 # TODO: figure out to how optimize or parallelize the taylor (70%) and guassian (20%) parts
 # seriously post-processing shouldnt take more time than the model inference...
-# import pprofile
-# profiler = pprofile.Profile()
 
 # Pipeline steps
 # 1. convert image from BGR to RGB
@@ -253,10 +251,8 @@ class MMPoseDetector(YoloV5Detector, mmposeCfg):
 
     def cleanup(self):
         super().cleanup()
-        # profiler.dump_stats("profile-mmpose.lprof")
 
     def analyze(self, img, **_):
-        # with profiler:
         if 0 in img.shape:
             return []
         dets = self._forward(img)
@@ -329,7 +325,10 @@ def visualize_outputs(buffer_and_data, confidence_thres=0.5):
 
 
 def create_mmpose_worker(
-    max_fps=mmposeCfg.max_fps, lock_fps=mmposeCfg.lock_fps, **kwargs
+    max_fps=mmposeCfg.max_fps,
+    lock_fps=mmposeCfg.lock_fps,
+    do_profiling=mmposeCfg.do_profiling,
+    **kwargs,
 ):
     return AnalysisWorker(
         analyzer=MMPoseDetector(**kwargs),
@@ -337,4 +336,5 @@ def create_mmpose_worker(
         format_output=format_as_mp_pose,
         max_fps=max_fps,
         lock_fps=lock_fps,
+        do_profiling=do_profiling,
     )

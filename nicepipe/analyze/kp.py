@@ -29,8 +29,6 @@ from nicepipe.utils.logging import ORIGINAL_CWD
 
 # TODO: implement multiple objects... even if we dont have duplicate objects, it provides a performance boost to match cluster-wise
 
-# import pprofile
-# profiler  = pprofile.Profile()
 
 @dataclass
 class orbCfg:
@@ -200,11 +198,9 @@ class KPDetector(BaseAnalyzer, kpDetCfg):
             self.features[name] = calc_features(im, query_detector, self.descriptor)
 
     def cleanup(self):
-        # profiler.dump_stats('profile-kp.lprof')
         pass
 
     def analyze(self, img, **_):
-        # with profiler:
         # TODO: write keypoint tracker
         # https://docs.opencv.org/4.x/d5/dec/classcv_1_1videostab_1_1KeypointBasedMotionEstimator.html
         # will reduce lag if no need to match every frame
@@ -314,6 +310,7 @@ def visualize_output(buffer_and_data):
 def create_kp_worker(
     max_fps=kpDetCfg.max_fps,
     lock_fps=kpDetCfg.lock_fps,
+    do_profiling=kpDetCfg.do_profiling,
     **kwargs,
 ):
     if not kwargs:  # empty dicts are false. Okay python.
@@ -325,6 +322,7 @@ def create_kp_worker(
         visualize_output=visualize_output,
         max_fps=max_fps,
         lock_fps=lock_fps,
+        do_profiling=do_profiling,
     )
 
 

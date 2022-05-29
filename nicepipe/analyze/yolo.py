@@ -228,11 +228,15 @@ def visualize_outputs(buffer_and_data):
 
 
 def create_yolo_worker(
-    max_fps=yoloV5Cfg.max_fps, lock_fps=yoloV5Cfg.lock_fps, **kwargs
+    max_fps=yoloV5Cfg.max_fps,
+    lock_fps=yoloV5Cfg.lock_fps,
+    do_profiling=yoloV5Cfg.do_profiling,
+    **kwargs,
 ):
     return AnalysisWorker(
         analyzer=YoloV5Detector(**kwargs),
         visualize_output=visualize_outputs,
         max_fps=max_fps,
         lock_fps=lock_fps,
+        do_profiling=do_profiling,
     )

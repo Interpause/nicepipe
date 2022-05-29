@@ -107,7 +107,11 @@ def visualize_output(buffer_and_data):
     )
 
 
-def create_mp_pose_worker(cfg=mpPoseCfg(), scale_wh=mpPoseWorkerCfg.scale_wh, **kwargs):
+def create_mp_pose_worker(
+    cfg=mpPoseCfg(),
+    scale_wh=mpPoseWorkerCfg.scale_wh,
+    **kwargs,
+):
     def process_input(img, **extra):
         if scale_wh is None:
             return img, extra

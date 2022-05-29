@@ -11,13 +11,20 @@ from asyncio import Task, run as async_run, create_task, to_thread
 from multiprocessing import Pipe, Process
 from multiprocessing.connection import Connection
 
-from ..utils import cancel_and_join, RLLoop, WithFPSCallback, gather_and_reraise, trim_task_queue
+from ..utils import (
+    RLLoop,
+    WithFPSCallback,
+    gather_and_reraise,
+    trim_task_queue,
+)
 import nicepipe.utils.uvloop  # use uvloop for child process asyncio loop
 
 import pickle
 from tblib import pickling_support
 
 pickling_support.install()
+
+import pprofile
 
 log = logging.getLogger(__name__)
 
@@ -59,8 +66,9 @@ class BaseAnalyzer(ABC):
         """Clean up analyzer's resources."""
         pass
 
-    def begin(self, pipe: Connection):
+    def begin(self, pipe: Connection, do_profiling=False):
         """Begins analyzer IO as target of Process()."""
+        self._profiler = pprofile.Profile() if do_profiling else None
         try:
             self.pipe = pipe
             self.init()
@@ -71,6 +79,8 @@ class BaseAnalyzer(ABC):
             self.pipe.send((1, pickle.dumps(e)))
         finally:
             try:
+                if self._profiler:
+                    self._profiler.dump_stats(f"{type(self).__name__}-profile.lprof")
                 self.cleanup()
             except Exception as e:
                 # this error wont make it in time when shutting down cleanly
@@ -79,6 +89,10 @@ class BaseAnalyzer(ABC):
                 self.pipe.send((1, pickle.dumps(e)))
             finally:
                 self.pipe.close()
+
+    def _profiling_hook(self, *args, **kwargs):
+        with self._profiler:
+            return self.analyze(*args, **kwargs)
 
     async def _loop(self):
         tasks = deque()
@@ -89,7 +103,11 @@ class BaseAnalyzer(ABC):
             if isinstance(img, str):
                 break
             try:
-                results = (0, await to_thread(self.analyze, img, **extra))
+                results = (
+                    (0, await to_thread(self._profiling_hook, img, **extra))
+                    if self._profiler
+                    else (0, await to_thread(self.analyze, img, **extra))
+                )
             except Exception as e:
                 results = (1, pickle.dumps(e))  # pass exception back
 
@@ -110,6 +128,8 @@ class AnalysisWorkerCfg:
     """max io rate of Analyzer in Hz"""
     lock_fps: bool = False
     """Whether to lock analysis rate to input rate."""
+    do_profiling: bool = False
+    """Whether to gather profile stats for the worker"""
 
 
 @dataclass
@@ -184,9 +204,7 @@ class AnalysisWorker(AnalysisWorkerCfg, WithFPSCallback):
                     try:
                         raise pickle.loads(output)
                     except Exception as e:
-                        log.error(
-                            f"{type(self.analyzer).__name__} error", exc_info=e
-                        )
+                        log.error(f"{type(self.analyzer).__name__} error", exc_info=e)
                         continue
                 self.current_output = self.process_output(output)
                 self.fps_callback()
@@ -204,6 +222,7 @@ class AnalysisWorker(AnalysisWorkerCfg, WithFPSCallback):
         self.process = Process(
             target=self.analyzer.begin,
             args=(child_pipe,),
+            kwargs=dict(do_profiling=self.do_profiling),
             daemon=True,
             name=type(self.analyzer).__name__,
         )
@@ -220,9 +239,7 @@ class AnalysisWorker(AnalysisWorkerCfg, WithFPSCallback):
         try:
             await gather_and_reraise(*self.loop_tasks)
         except Exception as e:
-            log.error(
-                f"{type(self.analyzer).__name__} error during close", exc_info=e
-            )
+            log.error(f"{type(self.analyzer).__name__} error during close", exc_info=e)
         # self.process.terminate()
         await to_thread(self.process.join)
         log.debug(f"{type(self.analyzer).__name__} worked closed!")
