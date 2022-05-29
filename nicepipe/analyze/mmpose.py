@@ -7,19 +7,23 @@ I took liberties when implementing it for conciseness & performance
 
 from __future__ import annotations
 from dataclasses import dataclass, field
-from colorsys import hsv_to_rgb
 from typing import Any, Optional
+from colorsys import hsv_to_rgb
+from pathlib import Path
+import random
 
 import cv2
 
 # import cython
 import numpy as np
 
+# https://github.com/tryolabs/norfair/tree/master/docs
+from norfair import Detection, Tracker
+from norfair.tracker import TrackedObject
+
 from onnxruntime import InferenceSession
-from pathlib import Path
 
 from nicepipe.analyze.base import AnalysisWorker
-from nicepipe.analyze.naive_tracker import NaiveTracker
 
 import nicepipe.models
 from nicepipe.analyze.yolo import YoloV5Detector, yoloV5Cfg
@@ -228,11 +232,32 @@ def heatmap2keypoints(heatmaps: np.ndarray, centers: np.ndarray, scales: np.ndar
     return remap_keypoints(preds, centers, scales, (w, h)), maxvals
 
 
+def create_pose_distance_calculator(dist_threshold=1 / 40, conf_threshold=0.5):
+    """gauge pose distance by number of keypoints under a threshold of euclidean distance"""
+
+    # TODO: possible to swap out distance functions? like using manhattan or cosine?
+    # btw if you wanted to insert image feature vector association (like deepSORT), it would be here.
+    def pose_distance(pose: Detection, pose_track: TrackedObject):
+        dists = np.linalg.norm(pose.points - pose_track.estimate, axis=1)
+        num_match = np.count_nonzero(
+            (dists < dist_threshold)
+            * (pose.scores > conf_threshold)
+            * (pose_track.last_detection.scores > conf_threshold)
+        )
+        return 1 / max(num_match, 1)
+
+    return pose_distance
+
+
 @dataclass
 class mmposeCfg(yoloV5Cfg):
     crop_pad: float = 1.25
     keypoints_include: Optional[list[Any]] = field(default_factory=lambda: [(0, 133)])
     """list of tuples or int indexes. tuples are converted to slices to index. there are 133 keypoints in coco wholebody."""
+
+
+# NOTE: declaring properties on mmposeCfg = public settings
+# declaring properties on MMPoseDetector = secret settings. Neat.
 
 
 @dataclass
@@ -243,6 +268,17 @@ class MMPoseDetector(YoloV5Detector, mmposeCfg):
     # idk are these imagenet's standardization values?
     mean_rgb: tuple[float, float, float] = (0.485, 0.456, 0.406)
     std_rgb: tuple[float, float, float] = (0.229, 0.224, 0.225)
+
+    kp_dist_thres: float = 1 / 40
+    """normalized distance for 2 keypoints to be considered tracked"""
+    kp_conf_thres: float = 0.4
+    """min confidence to consider a keypoint for tracking"""
+    tracked_kps: list[int] = field(default_factory=lambda: [0, 11, 12, 23, 24])
+    """which keypoints to use for tracking"""
+    dist_thres: float = (
+        0.8  # e.g. 1/2 means tracking the equivalent of 2 points perfectly
+    )
+    """overall distance threshold, above which is considered a separate object"""
 
     def init(self):
         super().init()
@@ -257,17 +293,30 @@ class MMPoseDetector(YoloV5Detector, mmposeCfg):
                 i if isinstance(i, int) else slice(*i) for i in self.keypoints_include
             )
         ]
-        self._sorter = NaiveTracker()
+
+        # https://github.com/tryolabs/norfair/tree/master/docs#arguments
+        self._tracker = Tracker(
+            distance_function=create_pose_distance_calculator(
+                self.kp_dist_thres, self.kp_conf_thres
+            ),
+            distance_threshold=self.dist_thres,  # see pose_distance_calculator for how it is calculated
+            detection_threshold=self.kp_conf_thres,
+            # "HP" +1 whenever detected, -1 whenever missed
+            hit_inertia_max=5,  # "max HP" of a tracked object
+            hit_inertia_min=1,  # "starting HP" of a tracked object
+            initialization_delay=3,  # frames before tracked object is "spawned"
+            past_detections_length=0,
+        )
 
     def cleanup(self):
         super().cleanup()
 
-    def analyze(self, img, **_):
+    def _forward(self, img):
         if 0 in img.shape:
-            return []
-        dets = self._forward(img)
+            return np.zeros((0, len(self._include_key), 4))
+        dets = super()._forward(img)
         if len(dets) == 0:
-            return []
+            return np.zeros((0, len(self._include_key), 4))
 
         c, s = bbox_xyxy2cs(dets[:, :4], ratio_wh=self._ratio_wh, pad=self.crop_pad)
         crops = crop_bbox(img, c, s, self.input_wh)  # crop on original image not scaled
@@ -289,9 +338,22 @@ class MMPoseDetector(YoloV5Detector, mmposeCfg):
         # coco wholebody ids
         ids = (np.arange(conf.size) + 1).reshape(conf.shape)
         out = np.concatenate((ncoords, conf, ids), axis=2)
+        return out  # (n, kp, 4) 4 = (x, y, conf, id)
 
-        sort_inds = self._sorter.sort(coords[:, :13])
-        return out[sort_inds]  # (n, kp, (x,y,conf,id))
+    def analyze(self, img, **_):
+        dets = [
+            Detection(
+                points=d[self.tracked_kps, :2],
+                scores=d[self.tracked_kps, 2],
+                data=d,
+                label=0,
+            )
+            for d in self._forward(img)
+        ]
+        # norfair tracker can account for period
+        # TODO: pass fps info into here, somehow
+        tracks = self._tracker.update(detections=dets)
+        return {t.id: t.last_detection.data for t in tracks}
 
 
 # coco keypoints start from 1 rather than 0
@@ -306,22 +368,39 @@ def coco_wholebody2mp_pose(kp):
 
 def format_as_mp_pose(out, **_):
     # user has manually selected coco_keypoints via keypoints_include
-    if len(next(iter(out), [])) == 33:
+    if len(next(iter(out.values()), [])) == 33:
         return {
             i: tuple(coco_wholebody2mp_pose(kp) for kp in pose)
-            for i, pose in enumerate(out)
+            for i, pose in out.items()
         }
     return {
         i: tuple(coco_wholebody2mp_pose(pose[n]) for n in coco2mp_map)
-        for i, pose in enumerate(out)
+        for i, pose in out.items()
     }
+
+
+id_color_map = {}
 
 
 def visualize_outputs(buffer_and_data, confidence_thres=0.5):
     imbuffer, results = buffer_and_data
-    for n, pose in enumerate(results):
-        color = hsv_to_rgb(n / len(results), 1, 1)
+    for id, pose in results.items():
+        c = id_color_map.get(id, None)
+        if c is None:
+            c = id_color_map[id] = random.random()
+
+        color = hsv_to_rgb(c / len(results), 1, 1)
         for (x, y, c, i) in pose:
+            if i == 1:
+                cv2.putText(
+                    imbuffer,
+                    f"#{id}",
+                    (int(x * imbuffer.shape[1]), int(y * imbuffer.shape[0])),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.3,
+                    color,
+                )
+                continue
             if c < confidence_thres:
                 continue
             # print(f"Point {i} at {int(x*imbuffer.shape[1])},{int(y*imbuffer.shape[0])}")

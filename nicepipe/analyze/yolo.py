@@ -5,6 +5,9 @@ My main modifications were removing reliance on torch and
 whatever I deemed extraneous
 https://github.com/ultralytics/yolov5/blob/master/utils/general.py
 """
+# TODO: wtf is https://pypi.org/project/yolov5/. Take a look at https://pypi.org/project/yolov5/
+# No one mentioned this on the readme, is it fake? yeah its a 3rd party package...?
+# give up, use the blackbox, make training OP models easy for your successors
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
