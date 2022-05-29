@@ -16,6 +16,12 @@ install-torch = "pip install torch==1.11+cu115 torchvision==0.12+cu115 -f https:
 _rem_cv2 = "pip uninstall opencv-python opencv-python-headless opencv-contrib-python opencv-contrib-python-headless"
 _add_cv2 = "pip install opencv-contrib-python"
 install-cv2 = ["_rem_cv2", "_add_cv2"]
+
+# until https://github.com/python-poetry/poetry/issues/697 is resolved
+# I will add a workaround for each... step...
+post-install = ["install-cv2", "_add_rich"]
+_add_rich = "pip install \"rich>=12\""
+
 build-windows-minimal = """\
 pyinstaller nicepipe\\__main__.py \
 --name nicepipe \
@@ -86,7 +92,7 @@ protobuf = "^3.20.0"
 mediapipe = "^0.8.9.0"
 uvloop = {version = "^0.16.0", platform = "linux"}
 # tensorflow = "^2.8.0"
-rich = "^12.2.0"
+rich = "^9.13.0"
 uvicorn = {extras = ["standard"], version = "^0.17.0"}
 omegaconf = "^2.2.0"
 dearpygui = "^1.6.0"
@@ -94,18 +100,18 @@ python-socketio = "^5.6.0"
 blacksheep = "^1.2.0"
 aiortc = "^1.3.0"
 av = "^9.2.0"
-deep-sort-realtime = { path = 'submodules/deep_sort_realtime', develop = true }
 onnxruntime-gpu = "^1.11.0"
 msgpack = "^1.0.0"
 # netifaces = { path = "netifaces-0.11.0-cp39-cp39-win_amd64.whl" }
 tblib = "^1.7.0"
+norfair = "^0.4.0"
 
 [tool.poetry.group.dev.dependencies]
 poethepoet = "^0.13.0"
 pprofile = "^2.1.0"
 pyinstaller = "^4.10.0"
 black = "^22.3.0"
-cython = "^3.0"
+cython = ">=3.0.0a0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
