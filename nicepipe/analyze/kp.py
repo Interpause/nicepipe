@@ -179,7 +179,7 @@ class KPDetector(BaseAnalyzer, kpDetCfg):
         self.descriptor = cv2.xfeatures2d.BEBLID_create(1.0)
 
         self.bg_subtractor = (
-            cv2.bgsegm.createBackgroundSubtractorGSOC()
+            cv2.bgsegm.createBackgroundSubtractorCNT()
             if self.use_bg_subtraction
             else None
         )
