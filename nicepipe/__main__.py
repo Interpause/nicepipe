@@ -1,13 +1,5 @@
 from __future__ import annotations
-import pyximport
-
-# free performance? as long as we dont use magic dependencies it should work
-pyximport.install(
-    pyimport=True,
-    load_py_module_on_import_failure=False,
-    inplace=True,
-    language_level=3,
-)
+import nicepipe.utils.uvloop
 
 import sys
 import os
@@ -21,7 +13,8 @@ from omegaconf.errors import OmegaConfBaseException
 
 
 import dearpygui.dearpygui as dpg
-from rich.prompt import Confirm
+
+# from rich.prompt import Confirm # why this suddenly broke? idk
 from nicepipe.api import start_api
 from nicepipe.gui.fps_display import show_fps
 from nicepipe.gui.gui_log_handler import create_gui_log_handler
@@ -29,7 +22,6 @@ from nicepipe.gui.visualize_cfg import attach_visualize_cfg
 from nicepipe.input.cv2 import print_cv2_debug
 
 
-import nicepipe.utils.uvloop
 from nicepipe.cfg import get_config, nicepipeCfg
 from nicepipe.utils import (
     cancel_and_join,
@@ -175,7 +167,7 @@ def main(cfg: DictConfig):
 
             log.debug(f"Config: {cfg}")
             log.debug(f"Cwd: {os.getcwd()}")
-            print_cv2_debug()
+            # print_cv2_debug()
 
             if sys.platform.startswith("win"):
                 log.warning(
@@ -183,7 +175,8 @@ def main(cfg: DictConfig):
                 )
 
             if not cfg.misc.skip_tests:
-                prompt_test_cuda()
+                # prompt_test_cuda()
+                pass
 
             asyncio.run(loop(cfg))
     finally:
