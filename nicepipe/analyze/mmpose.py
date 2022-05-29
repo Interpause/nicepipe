@@ -11,6 +11,8 @@ from colorsys import hsv_to_rgb
 from typing import Any, Optional
 
 import cv2
+
+# import cython
 import numpy as np
 
 from onnxruntime import InferenceSession
@@ -107,6 +109,7 @@ def crop_bbox(
 
 
 # yanked straight from mmpose. my brain too puny to vectorize this.
+# @cython.compile
 def taylor(heatmap, coord):
     """Distribution aware coordinate decoding method.
 
@@ -147,6 +150,7 @@ def taylor(heatmap, coord):
 
 
 # yanked straight from mmpose, vectorizing this is too hard for my puny brain esp cause cv2 is used
+# @cython.compile
 def gaussian_blur(heatmaps, kernel=11):
     """Modulate heatmap distribution with Gaussian.
      sigma = 0.3*((kernel_size-1)*0.5-1)+0.8
@@ -173,7 +177,10 @@ def gaussian_blur(heatmaps, kernel=11):
     assert kernel % 2 == 1
 
     border = (kernel - 1) // 2
-    batch_size, num_joints, height, width = heatmaps.shape
+    batch_size = heatmaps.shape[0]
+    num_joints = heatmaps.shape[1]
+    height = heatmaps.shape[2]
+    width = heatmaps.shape[3]
     for i in range(batch_size):
         for j in range(num_joints):
             origin_max = np.max(heatmaps[i, j])

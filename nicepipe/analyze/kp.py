@@ -3,7 +3,8 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import cv2
-import cython
+
+# import cython
 import numpy as np
 from nicepipe.analyze.base import BaseAnalyzer, AnalysisWorker, AnalysisWorkerCfg
 from nicepipe.analyze.utils import letterbox
@@ -130,35 +131,15 @@ def find_object(matches, query_kp, test_kp, method=0, inlier_thres=5.0):
     return transform, mask
 
 
-filter_matches = cython.inline(
-    """
-    def func(tuple pairs, float ratio_thres=0.75):
-        return [
-            p[0]
-            for p in pairs
-            if len(p) == 1 or (len(p) == 2 and p[0].distance < ratio_thres * p[1].distance)
-        ]
-    return func
-    """
-)
-"""Use Lowe's ratio test to filter pairs of matches obtained from knnMatch"""
-
-
-# def filter_matches(pairs, ratio_thres=0.75):
-#     """Use Lowe's ratio test to filter pairs of matches obtained from knnMatch"""
-#     # pair is (best, 2nd best), check if best is closer by factor compared to 2nd best
-#     ret = cython.inline(
-#         """
-#         return [
-#             p[0]
-#             for p in pairs
-#             if len(p) == 1 or (len(p) == 2 and p[0].distance < ratio_thres * p[1].distance)
-#         ]
-#         """,
-#         pairs=pairs,
-#         ratio_thres=ratio_thres,
-#     )
-#     return ret
+# @cython.compile
+def filter_matches(pairs, ratio_thres=0.75):
+    """Use Lowe's ratio test to filter pairs of matches obtained from knnMatch"""
+    # pair is (best, 2nd best), check if best is closer by factor compared to 2nd best
+    return [
+        p[0]
+        for p in pairs
+        if len(p) == 1 or (len(p) == 2 and p[0].distance < ratio_thres * p[1].distance)
+    ]
 
 
 # https://docs.opencv.org/4.x/de/db2/classcv_1_1KeyPointsFilter.html

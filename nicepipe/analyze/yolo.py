@@ -150,8 +150,10 @@ def non_max_suppression(
 
 @dataclass
 class yoloV5Cfg(AnalysisWorkerCfg):
-    confidence: float = 0.7  # 0.25
-    nms: float = 0.45  # 0.45
+    confidence: float = 0.5  # 0.25
+    """confidence threshold below while detections are filtered out"""
+    nms: float = 0.7  # 0.45
+    """iou/overlap threshold above which overlapping detections are merged (aka filtered)"""
     class_include: Optional[list[str]] = field(default_factory=lambda: ["person"])
 
 
