@@ -269,7 +269,7 @@ class MMPoseDetector(YoloV5Detector, mmposeCfg):
     mean_rgb: tuple[float, float, float] = (0.485, 0.456, 0.406)
     std_rgb: tuple[float, float, float] = (0.229, 0.224, 0.225)
 
-    kp_dist_thres: float = 1 / 40
+    kp_dist_thres: float = 1 / 25
     """normalized distance for 2 keypoints to be considered tracked"""
     kp_conf_thres: float = 0.4
     """min confidence to consider a keypoint for tracking"""
