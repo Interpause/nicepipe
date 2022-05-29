@@ -11,7 +11,7 @@ from asyncio import Task, run as async_run, create_task, to_thread
 from multiprocessing import Pipe, Process
 from multiprocessing.connection import Connection
 
-from ..utils import cancel_and_join, RLLoop, WithFPSCallback, trim_task_queue
+from ..utils import cancel_and_join, RLLoop, WithFPSCallback, gather_and_reraise, trim_task_queue
 import nicepipe.utils.uvloop  # use uvloop for child process asyncio loop
 
 import pickle
@@ -185,7 +185,7 @@ class AnalysisWorker(AnalysisWorkerCfg, WithFPSCallback):
                         raise pickle.loads(output)
                     except Exception as e:
                         log.error(
-                            f"{type(self.analyzer).__name__} error", exc_info=output
+                            f"{type(self.analyzer).__name__} error", exc_info=e
                         )
                         continue
                 self.current_output = self.process_output(output)
@@ -217,9 +217,14 @@ class AnalysisWorker(AnalysisWorkerCfg, WithFPSCallback):
     async def close(self):
         self.is_closing = True
         log.debug(f"{type(self.analyzer).__name__} worker closing...")
-        await cancel_and_join(*self.loop_tasks)
-        self.process.terminate()
-        # await to_thread(self.process.join)
+        try:
+            await gather_and_reraise(*self.loop_tasks)
+        except Exception as e:
+            log.error(
+                f"{type(self.analyzer).__name__} error during close", exc_info=e
+            )
+        # self.process.terminate()
+        await to_thread(self.process.join)
         log.debug(f"{type(self.analyzer).__name__} worked closed!")
 
     async def __aenter__(self):

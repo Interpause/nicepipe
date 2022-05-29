@@ -27,9 +27,10 @@ from nicepipe.utils.logging import ORIGINAL_CWD
 # methods that can match neural networks with much less data (like a better version of HAAR)
 # but no it got abandoned in favour of neural networks
 
-# TODO: background removal/subtraction using static image
 # TODO: implement multiple objects... even if we dont have duplicate objects, it provides a performance boost to match cluster-wise
 
+# import pprofile
+# profiler  = pprofile.Profile()
 
 @dataclass
 class orbCfg:
@@ -115,7 +116,7 @@ def calc_features(img, detector, descriptor=None, mask=None, keypoints=None):
 # cv2.LMEDS: like voting, needs at least 50% inliers
 
 
-def find_object(matches, query_kp, test_kp, method=cv2.RANSAC, inlier_thres=5.0):
+def find_object(matches, query_kp, test_kp, method=0, inlier_thres=5.0):
     # coordinates in query & test image that match
     query_pts = cv2.KeyPoint_convert(
         query_kp, tuple(m.queryIdx for m in matches)
@@ -199,9 +200,11 @@ class KPDetector(BaseAnalyzer, kpDetCfg):
             self.features[name] = calc_features(im, query_detector, self.descriptor)
 
     def cleanup(self):
+        # profiler.dump_stats('profile-kp.lprof')
         pass
 
     def analyze(self, img, **_):
+        # with profiler:
         # TODO: write keypoint tracker
         # https://docs.opencv.org/4.x/d5/dec/classcv_1_1videostab_1_1KeypointBasedMotionEstimator.html
         # will reduce lag if no need to match every frame
