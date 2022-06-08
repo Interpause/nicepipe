@@ -15,11 +15,11 @@ readme = "README.md"
 install-torch = "pip install torch==1.11+cu115 torchvision==0.12+cu115 -f https://download.pytorch.org/whl/torch_stable.html"
 _rem_cv2 = "pip uninstall -y opencv-python opencv-python-headless opencv-contrib-python opencv-contrib-python-headless"
 _add_cv2 = "pip install opencv-contrib-python"
-install-cv2 = ["_rem_cv2", "_add_cv2"]
 
 # until https://github.com/python-poetry/poetry/issues/697 is resolved
 # I will add a workaround for each... step...
-post-install = ["install-cv2", "_add_rich", "_win_netifaces"]
+post-install.sequence = ["_rem_cv2", "_add_cv2", "_add_rich", "_win_netifaces"]
+post-install.ignore_fail = "return_zero"
 _add_rich = "pip install rich>=12"
 # below fails on non-windows platform but it doesn't affect anything as the last task
 _win_netifaces = "pip install netifaces-0.11.0-cp39-cp39-win_amd64.whl"
@@ -115,7 +115,7 @@ black = "^22.3.0"
 cython = ">=3.0.0a0"
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=1.2.0"]
 build-backend = "poetry.core.masonry.api"
 
 # [[tool.poetry.source]]
