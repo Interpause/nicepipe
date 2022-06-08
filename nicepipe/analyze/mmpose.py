@@ -265,12 +265,12 @@ class MMPoseDetector(YoloV5Detector, mmposeCfg):
     pose_model_path: str = str(Path(nicepipe.models.__path__[0]) / "vipnas_res50.onnx")
     input_wh: tuple[int, int] = (192, 256)
     crop_pad: float = 1.25
-    # idk are these imagenet's standardization values?
+    # idk are these imagenet's standardization values? anyways, vipnas_res50 was trained on these...
     mean_rgb: tuple[float, float, float] = (0.485, 0.456, 0.406)
     std_rgb: tuple[float, float, float] = (0.229, 0.224, 0.225)
 
     kp_dist_thres: float = 1 / 25
-    """normalized distance for 2 keypoints to be considered tracked"""
+    """maximum normalized distance deviation to be considered tracked"""
     kp_conf_thres: float = 0.4
     """min confidence to consider a keypoint for tracking"""
     tracked_kps: list[int] = field(default_factory=lambda: [0, 11, 12, 23, 24])
