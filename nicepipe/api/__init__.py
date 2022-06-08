@@ -50,14 +50,28 @@ def setup_sio():
     return sio
 
 
+async def serve_uvicorn(app, log_level):
+    """had to remove their signal handlers to use my own"""
+
+    config = Config(app, log_config=None, log_level=log_level, lifespan="off")
+    server = Server(config)
+
+    if not config.loaded:
+        config.load()
+    server.lifespan = config.lifespan_class(config)
+    await server.startup()
+
+    return server, server.main_loop()
+
+
 @asynccontextmanager
 async def start_api(log_level=logging.INFO):
     http_app = setup_app()
     sio = setup_sio()
     app = socketio.ASGIApp(sio, http_app)
-    config = Config(app, log_config=None, log_level=log_level)
-    server = Server(config)
-    task = asyncio.create_task(server.serve())
+
+    server, server_loop = await serve_uvicorn(app, log_level)
+    task = asyncio.create_task(server_loop)
     try:
         yield app, sio
     finally:

@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 import cv2
 import numpy as np
 import dearpygui.dearpygui as dpg
+from nicepipe.gui.visualize_cfg import attach_visualize_cfg
 from nicepipe.output.base import Sink
 from nicepipe.utils import RLLoop, cancel_and_join
 
@@ -20,6 +21,8 @@ class GUIStreamer(Sink):
     """buffer is sized by width"""
     window_tag: int | str = None
     """window to attach to"""
+    cfg_window_tag: int | str = None
+    """window to attach config to"""
 
     def _resize_gui(self, _, tag):
         window_height = dpg.get_item_height(tag)
@@ -98,6 +101,7 @@ class GUIStreamer(Sink):
         )
         self.visualizers["camgui"] = None
         self._task = None
+        attach_visualize_cfg(self, self.cfg_window_tag)
 
     async def close(self):
         self._is_closing = True

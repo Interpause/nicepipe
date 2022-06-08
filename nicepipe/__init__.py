@@ -11,7 +11,7 @@ freeze_support()
 
 from .worker import Worker, create_worker
 
-__version__ = "0.7.4"
+__version__ = "0.7.5"
 __all__ = ["Worker", "create_worker"]
 
 

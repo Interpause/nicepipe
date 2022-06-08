@@ -1,4 +1,5 @@
 from __future__ import annotations
+import signal
 import nicepipe.utils.uvloop
 
 # import nicepipe.utils.cython_hack
@@ -7,23 +8,17 @@ import sys
 import os
 import logging
 import asyncio
-from contextlib import ExitStack
+from contextlib import AsyncExitStack, ExitStack
+from dataclasses import dataclass
 
 
 from omegaconf import OmegaConf, DictConfig
 from omegaconf.errors import OmegaConfBaseException
 
-
-import dearpygui.dearpygui as dpg
-
 # from rich.prompt import Confirm # why this suddenly broke? idk
 from nicepipe.api import start_api
-from nicepipe.gui.fps_display import show_fps
-from nicepipe.gui.gui_log_handler import create_gui_log_handler
-from nicepipe.gui.visualize_cfg import attach_visualize_cfg
 
 # from nicepipe.input.cv2 import print_cv2_debug
-
 
 from nicepipe.cfg import get_config, nicepipeCfg
 from nicepipe.utils import (
@@ -32,15 +27,16 @@ from nicepipe.utils import (
     RLLoop,
     change_cwd,
 )
-from nicepipe.gui import setup_gui, show_all_dpg_tools, show_camera
 from nicepipe.worker import create_worker
-
 
 log = logging.getLogger(__name__)
 
-gui_log_handler = create_gui_log_handler()
-
 rich_live_display = None
+
+
+@dataclass
+class appState:
+    is_ending: bool = False
 
 
 def prompt_test_cuda():
@@ -69,76 +65,44 @@ async def resume_live_display():
 
 
 async def loop(cfg: nicepipeCfg):
-    from nicepipe import __version__
+    state = appState()
 
-    async with setup_gui():
-        gui_sink, cam_window = show_camera()
+    def exit_callback():
+        state.is_ending = True
 
-        dpg.set_primary_window(cam_window, True)
+    loop = asyncio.get_event_loop()
+    for sig in [signal.SIGINT, signal.SIGTERM]:
+        loop.add_signal_handler(sig, exit_callback)
 
-        # is only their initial values; good enough for positioning
-        win_height = dpg.get_viewport_client_height()
-        win_width = dpg.get_viewport_client_width()
+    async with AsyncExitStack() as stack:
+        worker = create_worker(cfg)
 
-        dpg.add_window(label="Settings", tag="config_window", show=False)
+        if not cfg.misc.headless_mode:
+            from nicepipe.gui import setup_gui
 
-        with dpg.window(label="Logs", tag="logs_window", autosize=True, show=False):
-            gui_log_handler.show()
-
-        with dpg.window(
-            label="Loop FPS",
-            tag="fps_window",
-            pos=(0, win_height * 0.2),
-            height=win_height * 0.4,
-            width=win_width * 0.5,
-            show=False,
-        ):
-            update_fps_bar = show_fps()
-
-        with dpg.window(
-            label="Credits",
-            pos=(win_width * 0.3, win_height * 0.3),
-            height=win_height * 0.4,
-            width=win_width * 0.4,
-            modal=True,
-            show=False,
-            tag="about_window",
-        ):
-            dpg.add_text(f"Nicepipe v{__version__}")
-            dpg.add_text("Powered by JHTech")
-
-        with dpg.viewport_menu_bar():
-            dpg.add_menu_item(
-                label="Settings", callback=lambda: dpg.show_item("config_window")
-            )
-            dpg.add_menu_item(
-                label="Logs", callback=lambda: dpg.show_item("logs_window")
-            )
-            dpg.add_menu_item(label="FPS", callback=lambda: dpg.show_item("fps_window"))
-            dpg.add_menu_item(label="DPG", callback=show_all_dpg_tools)
-            dpg.add_menu_item(
-                label="About", callback=lambda: dpg.show_item("about_window")
-            )
-
-        async with start_api(log_level=cfg.misc.log_level) as (app, sio):
-            worker = create_worker(cfg)
+            gui_sink = await stack.enter_async_context(setup_gui(state))
             worker.sinks["gui"] = gui_sink
-            sio.register_namespace(worker.sinks["sio"])
 
-            async with worker:
-                attach_visualize_cfg(gui_sink, "config_window")
+        app, sio = await stack.enter_async_context(
+            start_api(log_level=cfg.misc.log_level)
+        )
+        sio.register_namespace(worker.sinks["sio"])
 
-                if cfg.misc.console_live_display:
-                    resume_task = asyncio.create_task(resume_live_display())
+        await stack.enter_async_context(worker)
 
-                async for _ in RLLoop(5):
-                    update_fps_bar()
-                    gui_log_handler.update()
-                    if not dpg.is_dearpygui_running():
-                        break
-                if cfg.misc.console_live_display:
-                    await cancel_and_join(resume_task)
-                rich_live_display.stop()
+        if cfg.misc.console_live_display:
+            resume_task = asyncio.create_task(resume_live_display())
+
+        try:
+            async for _ in RLLoop(5):
+                if state.is_ending:
+                    break
+        except KeyboardInterrupt:
+            pass
+
+        if cfg.misc.console_live_display:
+            await cancel_and_join(resume_task)
+        rich_live_display.stop()
 
 
 def main(cfg: DictConfig):
@@ -204,7 +168,8 @@ if __name__ == "__main__":
         log.error(e, exc_info=e)
     finally:
         try:
-            input("Press enter to continue...")
+            # input("Press enter to continue...")
+            pass
         except:  # poethepoet triggers EOF lmao
             pass
         sys.exit(0)
