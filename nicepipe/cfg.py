@@ -62,6 +62,8 @@ def get_config(path="config.yml"):
         )
         print(f"Program will now exit to allow you to edit {path}.")
         raise KeyboardInterrupt
-
-    cfg = OmegaConf.unsafe_merge(schema, OmegaConf.load(path))
+    cli = OmegaConf.from_cli()
+    if "config_path" in cli:
+        path = cli.config_path
+    cfg = OmegaConf.unsafe_merge(schema, OmegaConf.load(path), cli)
     return cfg

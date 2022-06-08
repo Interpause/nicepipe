@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nicepipe"
-version = "0.7.5"
+version = "0.8.0"
 description = "remote worker for video inference"
 license = "Proprietary"
 authors = ["John-Henry Lim <42513874+Interpause@users.noreply.github.com>"]
@@ -82,9 +82,10 @@ dev = "python -m nicepipe"
 
 # specific to my linux setup since installing CUDA normally
 # well its hard on gentoo. I could always use Windows instead
-
-[tool.poe.tasks.hack]
-shell = "PATH=$PATH:~/.conda/envs/cuda/lib LD_LIBRARY_PATH=~/.conda/envs/cuda/lib python -m nicepipe"
+# Also see: https://github.com/nat-n/poethepoet/issues/72
+#hack1.cmd = "python -m nicepipe"
+#hack1.env = { LD_LIBRARY_PATH = "~/.conda/envs/cuda/lib" } 
+hack.shell = "LD_LIBRARY_PATH=~/.conda/envs/cuda/lib python -m nicepipe"
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.10"
