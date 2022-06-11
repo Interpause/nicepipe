@@ -12,40 +12,54 @@ readme = "README.md"
 # 1. instead of returning 404 for packages it doesn't have, PyTorch's index returns 403.
 # 2. Poetry doesn't know how to deal with +tags on the version.
 # See https://github.com/python-poetry/poetry/issues/2543
-install-torch = "pip install torch==1.11+cu115 torchvision==0.12+cu115 -f https://download.pytorch.org/whl/torch_stable.html"
-_rem_cv2 = "pip uninstall -y opencv-python opencv-python-headless opencv-contrib-python opencv-contrib-python-headless"
-_add_cv2 = "pip install opencv-contrib-python-headless"
+# install-torch = "pip install torch==1.11+cu115 torchvision==0.12+cu115 -f https://download.pytorch.org/whl/torch_stable.html"
 
-# until https://github.com/python-poetry/poetry/issues/697 is resolved
-# I will add a workaround for each... step...
-post-install.sequence = ["_rem_cv2", "_add_cv2", "_add_rich", "_win_netifaces"]
-post-install.ignore_fail = "return_zero"
+# post-install stuff
+_rem_cv2 = "pip uninstall -y opencv-python opencv-python-headless opencv-contrib-python opencv-contrib-python-headless"
+_add_cv2 = "pip install opencv-contrib-python-headless>=4.5,<4.6"
 _add_rich = "pip install rich>=12"
 # below fails on non-windows platform but it doesn't affect anything as the last task
 _win_netifaces = "pip install netifaces-0.11.0-cp39-cp39-win_amd64.whl"
+# until https://github.com/python-poetry/poetry/issues/697 is resolved
+post-install.sequence = ["_rem_cv2", "_add_cv2", "_add_rich", "_win_netifaces"]
+post-install.ignore_fail = "return_zero"
 
-build-windows-minimal = """\
+build-windows = """\
 pyinstaller nicepipe\\__main__.py \
 --name nicepipe \
 --icon nicepipe.ico \
 --noconfirm \
 --onefile \
---collect-data mediapipe \
+--add-data nicepipe\\models\\yolov5n6.onnx:nicepipe\\models \
+--add-data nicepipe\\models\\vipnas_res50.onnx:nicepipe\\models \
 --collect-all blacksheep \
+--collect-binaries onnxruntime \
 --hidden-import cchardet \
 --exclude-module uvloop \
---exclude-module tensorflow \
---exclude-module nicepipe.analyze.yolo \
---exclude-module nicepipe.utils.cuda\
+--exclude-module nicepipe.utils.cuda \
 """
-build-windows = """\
-pyinstaller app.py \
+build-linux = """\
+pyinstaller nicepipe/__main__.py \
+--name nicepipe \
+--noconfirm \
+--onefile \
+--add-data nicepipe/models/yolov5n6.onnx:nicepipe/models \
+--add-data nicepipe/models/vipnas_res50.onnx:nicepipe/models \
+--collect-all blacksheep \
+--collect-binaries onnxruntime \
+--hidden-import cchardet \
+--exclude-module nicepipe.utils.cuda \
+"""
+build-windows-bundle-cuda = """\
+pyinstaller nicepipe\\__main__.py \
 --name nicepipe \
 --icon nicepipe.ico \
 --noconfirm \
 --onefile \
---collect-data mediapipe \
+--add-data nicepipe\\models\\yolov5n6.onnx:nicepipe\\models \
+--add-data nicepipe\\models\\vipnas_res50.onnx:nicepipe\\models \
 --collect-all blacksheep \
+--collect-binaries onnxruntime \
 --hidden-import cchardet \
 --exclude-module uvloop \
 --paths cudnn\\bin \
@@ -62,39 +76,40 @@ pyinstaller app.py \
 --upx-exclude cusolver64_11.dll \
 --upx-exclude curand64_10.dll \
 --upx-exclude cusparse64_11.dll \
---upx-exclude cufft64_10.dll\
+--upx-exclude cufft64_10.dll \
 """
-build-linux = """\
-pyinstaller app.py \
+build-linux-bundle-cuda = """\
+pyinstaller nicepipe/__main__.py \
 --name nicepipe \
 --noconfirm \
 --onefile \
---collect-data mediapipe \
+--add-data nicepipe/models/yolov5n6.onnx:nicepipe/models \
+--add-data nicepipe/models/vipnas_res50.onnx:nicepipe/models \
+--collect-all blacksheep \
+--collect-binaries onnxruntime \
+--hidden-import cchardet \
 --paths .venv/lib/site-packages/nvidia/cublas/lib \
 --paths .venv/lib/site-packages/nvidia/cuda_runtime/lib \
 --paths .venv/lib/site-packages/nvidia/cudnn/lib \
 --paths .venv/lib/site-packages/nvidia/cufft/lib \
 --paths .venv/lib/site-packages/nvidia/curand/lib \
 --paths .venv/lib/site-packages/nvidia/cusolver/lib \
---paths .venv/lib/site-packages/nvidia/cusparse/lib\
+--paths .venv/lib/site-packages/nvidia/cusparse/lib \
 """
-dev = "python -m nicepipe"
 
-# specific to my linux setup since installing CUDA normally
-# well its hard on gentoo. I could always use Windows instead
-# Also see: https://github.com/nat-n/poethepoet/issues/72
-#hack1.cmd = "python -m nicepipe"
-#hack1.env = { LD_LIBRARY_PATH = "~/.conda/envs/cuda/lib" } 
-hack.shell = "LD_LIBRARY_PATH=~/.conda/envs/cuda/lib python -m nicepipe"
+# dev tasks
+dev = "python -m nicepipe"
+# specific to my linux setup since installing CUDA normally on gentoo has issues
+# also they removed older versions from the portage tree
+hack.cmd = "python -m nicepipe"
+hack.env = { LD_LIBRARY_PATH = "${HOME}/.conda/envs/cuda/lib" } 
 
 [tool.poetry.dependencies]
+# see post-install task for opencv installation
 python = ">=3.9,<3.10"
 numpy = "^1.22.0"
-opencv-contrib-python = "^4.5.0" # something pulls in contrib as a dependency so might as well use it
 protobuf = "^3.20.0"
-mediapipe = "^0.8.9.0"
 uvloop = {version = "^0.16.0", platform = "linux"}
-# tensorflow = "^2.8.0"
 rich = "^9.13.0"
 uvicorn = {extras = ["standard"], version = "^0.17.0"}
 omegaconf = "^2.2.0"
@@ -113,7 +128,7 @@ poethepoet = "^0.13.0"
 pprofile = "^2.1.0"
 pyinstaller = "^4.10.0"
 black = "^22.3.0"
-cython = ">=3.0.0a0"
+# cython = ">=3.0.0a0"
 
 [build-system]
 requires = ["poetry-core>=1.2.0"]
