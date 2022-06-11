@@ -39,25 +39,6 @@ class appState:
     is_ending: bool = False
 
 
-def prompt_test_cuda():
-    try:
-        import nicepipe.utils.cuda
-
-        if nicepipe.utils.cuda.CUDA_ENABLED:
-            if Confirm.ask("Run CUDA Test?", default=False):
-                import tensorflow as tf  # noqa
-
-                # import torch # torch.cuda.is_available()
-                log.debug(f"DLLs: {nicepipe.utils.cuda.DLLs}")
-                log.info(
-                    f'Torch CUDA: disabled, Tensorflow CUDA: {len(tf.config.list_physical_devices("GPU")) > 0}'
-                )
-    # means CUDA & Tensorflow disabled
-    except Exception as e:
-        if not isinstance(e, ModuleNotFoundError):
-            log.warning(e)
-
-
 async def resume_live_display():
     """exists solely to prevent tflite's log messages from interrupting the fancy logs"""
     await asyncio.sleep(4)
@@ -142,7 +123,6 @@ def main(cfg: DictConfig):
                 )
 
             if not cfg.misc.skip_tests:
-                # prompt_test_cuda()
                 pass
 
             asyncio.run(loop(cfg))
