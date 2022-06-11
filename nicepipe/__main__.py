@@ -48,12 +48,11 @@ async def resume_live_display():
 async def loop(cfg: nicepipeCfg):
     state = appState()
 
-    def exit_callback():
+    def exit_callback(*args):
         state.is_ending = True
 
-    loop = asyncio.get_event_loop()
     for sig in [signal.SIGINT, signal.SIGTERM]:
-        loop.add_signal_handler(sig, exit_callback)
+        signal.signal(sig, exit_callback)
 
     async with AsyncExitStack() as stack:
         worker = create_worker(cfg)

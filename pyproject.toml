@@ -30,8 +30,8 @@ pyinstaller nicepipe\\__main__.py \
 --icon nicepipe.ico \
 --noconfirm \
 --onefile \
---add-data nicepipe\\models\\yolov5n6.onnx:nicepipe\\models \
---add-data nicepipe\\models\\vipnas_res50.onnx:nicepipe\\models \
+--add-data nicepipe\\models\\yolov5n6.onnx;nicepipe\\models \
+--add-data nicepipe\\models\\vipnas_res50.onnx;nicepipe\\models \
 --collect-all blacksheep \
 --collect-binaries onnxruntime \
 --hidden-import cchardet \
@@ -56,8 +56,8 @@ pyinstaller nicepipe\\__main__.py \
 --icon nicepipe.ico \
 --noconfirm \
 --onefile \
---add-data nicepipe\\models\\yolov5n6.onnx:nicepipe\\models \
---add-data nicepipe\\models\\vipnas_res50.onnx:nicepipe\\models \
+--add-data nicepipe\\models\\yolov5n6.onnx;nicepipe\\models \
+--add-data nicepipe\\models\\vipnas_res50.onnx;nicepipe\\models \
 --collect-all blacksheep \
 --collect-binaries onnxruntime \
 --hidden-import cchardet \
