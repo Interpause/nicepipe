@@ -5,7 +5,7 @@ import logging
 from datetime import datetime
 
 import socketio
-from blacksheep import Application
+from blacksheep import Application, text
 from uvicorn import Config, Server
 
 from ..utils import cancel_and_join
@@ -22,9 +22,11 @@ def setup_app():
         max_age=300,
     )
 
-    @app.route("/")
-    def home():
-        return f"TODO: web-based control panel? {datetime.now()}"
+    # dont know why blacksheep's auto handler normalization isn't working
+    # maybe cause blacksheep is being nested?
+    @app.router.get("/")
+    async def home(req):
+        return text(f"TODO: web-based control panel? {datetime.now()}")
 
     return app
 
@@ -50,10 +52,12 @@ def setup_sio():
     return sio
 
 
-async def serve_uvicorn(app, log_level):
+async def serve_uvicorn(app, host, port, log_level):
     """had to remove their signal handlers to use my own"""
 
-    config = Config(app, log_config=None, log_level=log_level, lifespan="off")
+    config = Config(
+        app, host=host, port=port, log_config=None, log_level=log_level, lifespan="off"
+    )
     server = Server(config)
 
     if not config.loaded:
@@ -65,12 +69,12 @@ async def serve_uvicorn(app, log_level):
 
 
 @asynccontextmanager
-async def start_api(log_level=logging.INFO):
+async def start_api(host="127.0.0.1", port=8000, log_level=logging.INFO):
     http_app = setup_app()
     sio = setup_sio()
     app = socketio.ASGIApp(sio, http_app)
 
-    server, server_loop = await serve_uvicorn(app, log_level)
+    server, server_loop = await serve_uvicorn(app, host, port, log_level)
     task = asyncio.create_task(server_loop)
     try:
         yield app, sio

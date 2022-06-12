@@ -20,6 +20,8 @@ class miscCfg:
     save_logs: bool = False
     console_live_display: bool = True
     headless_mode: bool = False
+    port: int = 8000
+    host: str = "0.0.0.0"
 
 
 @dataclass

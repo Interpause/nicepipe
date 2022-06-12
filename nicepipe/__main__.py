@@ -64,7 +64,9 @@ async def loop(cfg: nicepipeCfg):
             worker.sinks["gui"] = gui_sink
 
         app, sio = await stack.enter_async_context(
-            start_api(log_level=cfg.misc.log_level)
+            start_api(
+                host=cfg.misc.host, port=cfg.misc.port, log_level=cfg.misc.log_level
+            )
         )
         sio.register_namespace(worker.sinks["sio"])
 
