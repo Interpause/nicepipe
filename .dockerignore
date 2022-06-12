@@ -163,12 +163,14 @@ nicepipe/models/*.onnx
 !nicepipe/models/vipnas_res50.onnx
 
 # misc stuff
-.vscode
-.gitignore
-.gitattributes
-.gitmodules
-Dockerfile
-docker-compose.yml
+**/.dockerignore
+**/.vscode
+**/.git
+**/.gitignore
+**/.gitattributes
+**/.gitmodules
+**/Dockerfile*
+**/docker-compose*
 netifaces-0.11.0-cp39-cp39-win_amd64.whl
 nicepipe.ico
 poetry.toml
