@@ -86,6 +86,7 @@ class sioStreamCfg(baseSinkCfg):
     cv2_enc: cv2EncCfg = field(default_factory=cv2EncCfg)
     room_name: str = "stream_channel"
     namespace: str = "/stream"
+    ice_servers: list[Any] = field(default_factory=list)
 
 
 @dataclass
@@ -158,7 +159,9 @@ class SioStreamer(Sink, sioStreamCfg, AsyncNamespace):
     async def on_sub_rtc(self, sid, sdp):
         # log.debug("%s\t%s", sid, sdp)
         self._rtc_conns[sid] = "waiting"
-        conn = RTCPeerConnection(configuration=RTCConfiguration(iceServers=[]))
+        conn = RTCPeerConnection(
+            configuration=RTCConfiguration(iceServers=self.ice_servers)
+        )
         self._live_tracks[sid] = tracks = LiveStreamTrack(
             height=self.height, width=self.width
         )
