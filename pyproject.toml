@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nicepipe"
-version = "0.8.0"
+version = "0.8.1"
 description = "remote worker for video inference"
 license = "Proprietary"
 authors = ["John-Henry Lim <42513874+Interpause@users.noreply.github.com>"]
