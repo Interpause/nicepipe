@@ -1,3 +1,7 @@
+# Archived
+
+For those of you who know what this was for, please use the new backend.
+
 # nicepipe
 
 Worker that receives video input & outputs analysis.
